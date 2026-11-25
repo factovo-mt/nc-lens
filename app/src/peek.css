@@ -107,8 +107,6 @@
 #peek-rail button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
 #peek-rail svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
 #peek-list { flex: 1; min-width: 0; }
-#peek-tip { position: absolute; left: 34px; z-index: 5; transform: translateY(-50%); padding: 3px 8px; color: var(--fg); font-size: 12px; white-space: nowrap; pointer-events: none; background: var(--bg-bar); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 4px 12px var(--shadow); }
-#peek-tip[hidden] { display: none; }
 /* 集計のページ：折り返さず、収まらない分はスクロール。数値は右寄せ・等幅 */
 /* 使用コード一覧の文字の倍率（Ctrl＋ホイール。main.ts の setZoom） */
 #peek-list { zoom: var(--peek-zoom, 1); }

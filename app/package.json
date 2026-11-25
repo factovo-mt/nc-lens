@@ -2,7 +2,7 @@
   "name": "nclens-app",
   "description": "NC プログラムのカスタムマクロと四則演算の展開",
   "private": true,
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "license": "MIT",
   "author": "FACTOVO",

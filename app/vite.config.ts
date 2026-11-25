@@ -26,6 +26,18 @@ const distributionOutput: Plugin = {
   },
 };
 
+// Web 版のみ：ファビコン・ホーム画面のアイコン・manifest（web-public、node icon-src/web-icons.mjs で作る）
+const webIcons: Plugin = {
+  name: "web-icons",
+  transformIndexHtml: () => [
+    { tag: "link", attrs: { rel: "icon", href: "/favicon.ico", sizes: "16x16 32x32 48x48" }, injectTo: "head" },
+    { tag: "link", attrs: { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" }, injectTo: "head" },
+    { tag: "link", attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon.png" }, injectTo: "head" },
+    { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" }, injectTo: "head" },
+    { tag: "meta", attrs: { name: "theme-color", content: "#1e2128" }, injectTo: "head" },
+  ],
+};
+
 // Tauri の開発サーバーの決まりに合わせる（固定ポート、src-tauri は監視しない）
 export default defineConfig(async ({ mode }) => {
   const web = mode === "web";
@@ -39,7 +51,7 @@ export default defineConfig(async ({ mode }) => {
     },
     server: { port: 1420, strictPort: true, watch: { ignored: ["**/src-tauri/**"] } },
     plugins: web
-      ? [(await import("@cloudflare/vite-plugin")).cloudflare(), distributionOutput]
+      ? [(await import("@cloudflare/vite-plugin")).cloudflare(), webIcons, distributionOutput]
       : [distributionOutput],
     publicDir: web ? "web-public" : undefined,
     build: {

@@ -2,6 +2,7 @@
 // G・M・アドレスの説明は使用中のセットのニーモニック・固有の「解説」の列。空なら基底の組み込み、FANUC の順に探す。
 // #変数とマクロ文の説明はここの表。そのブロックの実行後のモーダルを 1 行添える。
 import { ncTokenAt } from "./nc-lang";
+import { tipDom } from "./tip";
 import { FUNC_LABEL } from "./dialect";
 import type { DialectSettings, ModalSnapshot } from "./types";
 
@@ -129,17 +130,5 @@ export function explainAt(line: string, ch: number, modal: ModalSnapshot | null)
   return tok && help ? { from: tok.from, to: tok.to, help } : null;
 }
 
-/** ツールチップの中身（折り返さない。長い行は … で省略、全文は title） */
-export function helpDom(h: CodeHelp): HTMLElement {
-  const el = document.createElement("div");
-  el.className = "code-help";
-  for (const [cls, text] of [["ch-head", h.head], ["ch-body", h.body], ["ch-note", h.note]] as const) {
-    if (!text) continue;
-    const d = document.createElement("div");
-    d.className = cls;
-    d.textContent = text;
-    d.title = text;
-    el.append(d);
-  }
-  return el;
-}
+/** ツールチップの中身（共通の見た目。tip.ts） */
+export const helpDom = (h: CodeHelp): HTMLElement => tipDom(h);

@@ -117,11 +117,12 @@ fn scan(dir: &Path) -> io::Result<BTreeMap<PathBuf, Stamp>> {
         let name = item.file_name().to_string_lossy().to_ascii_lowercase();
         let path = item.path();
         if name.ends_with(".expanded.ncd")
+            || name.ends_with(".expanded.nc")
             || !path
                 .extension()
                 .and_then(|x| x.to_str())
                 .is_some_and(|ext| {
-                    ["nc", "ncd", "dnc", "tap", "cnc", "mpf", "spf", "eia"]
+                    ["nc", "min", "ncd", "dnc", "tap", "cnc", "mpf", "spf", "eia"]
                         .iter()
                         .any(|x| ext.eq_ignore_ascii_case(x))
                 })

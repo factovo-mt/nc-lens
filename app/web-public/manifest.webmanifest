@@ -1,0 +1,16 @@
+{
+  "name": "NC Lens",
+  "short_name": "NC Lens",
+  "description": "NC プログラムのカスタムマクロと四則演算の展開",
+  "lang": "ja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1b1e24",
+  "theme_color": "#1e2128",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

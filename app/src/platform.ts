@@ -1,7 +1,7 @@
 import { invoke as nativeInvoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { emitTo } from "@tauri-apps/api/event";
-import { open as nativeOpen, save as nativeSave, message as nativeMessage } from "@tauri-apps/plugin-dialog";
+import { open as nativeOpen, save as nativeSave } from "@tauri-apps/plugin-dialog";
 import type { MessageDialogOptions, OpenDialogOptions, SaveDialogOptions } from "@tauri-apps/plugin-dialog";
 import type { Report, RunResult } from "./types";
 
@@ -58,7 +58,7 @@ export async function save(options: SaveDialogOptions): Promise<string | null> {
   const kinds = options.filters?.filter((f) => !f.extensions.includes("*")) ?? [];
   if (!name || kinds.length < 2) return name;
   const labels = kinds.map((f) => f.extensions[0].toUpperCase());
-  const r = await message("保存の形式", { title: "NC Lens", buttons: { yes: labels[0], no: labels[1], cancel: "キャンセル" } });
+  const r = await message("ダウンロードするファイルの形式の選択", { title: "保存の形式", buttons: { yes: labels[0], no: labels[1], cancel: "キャンセル" } });
   const ext = r === labels[0] ? kinds[0].extensions[0] : r === labels[1] ? kinds[1].extensions[0] : null;
   return ext ? withExtension(name, ext) : null;
 }
@@ -71,35 +71,49 @@ function withExtension(path: string, ext: string) {
 const isJsonText = (text: string) => text.replace(/^﻿/, "").trimStart().startsWith("{");
 const isJsonPath = (path: unknown) => /\.json$/i.test(String(path));
 
-export async function message(text: string, options: MessageDialogOptions): Promise<string> {
-  if (isDesktop) return nativeMessage(text, options);
-  const { buttons } = options;
-  if (!buttons || typeof buttons === "string") {
-    window.alert(text);
-    return "Ok";
-  }
+const ICON: Record<string, string> = {
+  warning: '<path d="M12 3.2L22 20.5H2z" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.2" fill="currentColor"/>',
+  error: '<circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  info: '<circle cx="12" cy="12" r="9.5" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="1.6"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/>',
+};
+const HEADING: Record<string, string> = { warning: "確認", error: "エラー", info: "お知らせ" };
+
+/**
+ * 確認メッセージ（デスクトップ版・Web 版で共通のアプリ内の小さなモーダル）。押したボタンの文言、Esc は "Cancel"。
+ * title：題（体言止め。"NC Lens" なら種類から）、text：本文 1〜2 行。
+ * ボタン：yes（既定・強調）・no（注意の色）・cancel。ok と cancel だけで kind が warning なら ok を注意の色、既定は cancel。
+ */
+export async function message(text: string, options: MessageDialogOptions = {}): Promise<string> {
+  const kind = options.kind ?? "info";
+  const b: Record<string, string | undefined> = typeof options.buttons === "object" && options.buttons ? options.buttons as Record<string, string | undefined> : { ok: typeof options.buttons === "string" && options.buttons !== "Ok" ? options.buttons : "OK" };
+  const risky = kind === "warning" && !("yes" in b) && "cancel" in b;
+  const order = ["yes", "ok", "no", "cancel"].filter((k) => b[k]);
+  const def = risky ? "cancel" : order[0];
+  const title = !options.title || options.title === "NC Lens" ? HEADING[kind] : options.title;
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
-    dialog.setAttribute("aria-label", options.title ?? "NC Lens");
-    const paragraph = document.createElement("p");
-    paragraph.style.whiteSpace = "pre-line";
-    paragraph.textContent = text;
-    const form = document.createElement("form");
-    form.method = "dialog";
-    for (const label of Object.values(buttons)) {
+    dialog.className = "adlg";
+    dialog.dataset.kind = kind;
+    dialog.setAttribute("aria-labelledby", "adlg-title");
+    dialog.innerHTML = `<div class="ad-main"><span class="ad-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICON[kind] ?? ICON.info}</svg></span><div class="ad-text"><h2 id="adlg-title"></h2><div class="ad-body"></div></div></div><form method="dialog"></form>`;
+    dialog.querySelector("h2")!.textContent = title;
+    dialog.querySelector(".ad-body")!.textContent = text;
+    const form = dialog.querySelector("form")!;
+    for (const k of order) {
       const button = document.createElement("button");
-      button.value = label;
-      button.textContent = label;
-      button.autofocus = "cancel" in buttons && label === buttons.cancel;
+      button.value = button.textContent = b[k]!;
+      if (k === def && k !== "cancel") button.className = "primary";
+      if (k === "no" || (risky && k === "ok")) button.className = "danger";
+      button.autofocus = k === def;
       form.append(button);
     }
-    dialog.append(paragraph, form);
     dialog.addEventListener("close", () => {
       dialog.remove();
       resolve(dialog.returnValue || "Cancel");
     }, { once: true });
     document.body.append(dialog);
     dialog.showModal();
+    form.querySelector<HTMLButtonElement>("[autofocus]")?.focus();
   });
 }
 
@@ -150,7 +164,7 @@ async function invokeWeb(command: string, args: Record<string, unknown>) {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(args.value));
       return;
     case "settings_reveal":
-      return message("設定はこのブラウザの保存領域にあります。", { title: "NC Lens" });
+      return message("設定の保存先：このブラウザの保存領域", { title: "設定の場所" });
     case "last_report":
       return lastReport;
   }

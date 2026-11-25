@@ -4,7 +4,7 @@
 import { FloatWin } from "./floatwin";
 import { invoke, isDesktop, openExternal } from "./platform";
 import { LINKS, LINK_ROWS } from "./links";
-import { APP, FEATURES, KEYS, ROADMAP, history } from "./help-data";
+import { APP, FEATURES, KEYS, PRIVACY, ROADMAP, history } from "./help-data";
 import { currentMnemonic } from "./codehelp";
 import { builtinDialects } from "./dialect";
 import type { MacroReference } from "./types";
@@ -24,7 +24,8 @@ function render(page: string) {
         ${isDesktop ? `<div class="pchecks"><button class="pbtn" data-hact="licenses">第三者のライセンスの場所</button></div>` : ""}</section>`;
     case "links":
       return `<section class="psec"><table class="ptable htable hlinks"><thead><tr><th>リンク</th><th>URL</th><th></th><th>内容</th></tr></thead><tbody>${LINK_ROWS.map(([k, name, note]) =>
-        `<tr><td>${esc(name)}</td><td><a href="${LINKS[k]}" target="_blank" rel="noopener" data-hlink="${k}">${LINKS[k]}</a></td><td><button class="pbtn" data-hcopy="${k}">コピー</button></td><td>${esc(note)}</td></tr>`).join("")}</tbody></table></section>`;
+        `<tr><td>${esc(name)}</td><td><a href="${LINKS[k]}" target="_blank" rel="noopener" data-hlink="${k}">${LINKS[k]}</a></td><td><button class="pbtn" data-hcopy="${k}">コピー</button></td><td>${esc(note)}</td></tr>`).join("")}</tbody></table></section>
+        <section class="psec"><h4>プライバシー</h4><ul class="hlist">${PRIVACY.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></section>`;
     case "features":
       return FEATURES.map(([h, items]) => `<section class="psec"><h4>${esc(h)}</h4><ul class="hlist">${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></section>`).join("");
     case "keys":

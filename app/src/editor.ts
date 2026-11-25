@@ -103,7 +103,10 @@ const theme = EditorView.theme({
   ".cm-err-mark": { color: "var(--bad)", fontSize: "10px", cursor: "help" },
   ".cm-panels": { backgroundColor: "var(--bg-bar)", color: "var(--fg)" },
   ".cm-searchMatch": { backgroundColor: "var(--ed-focus)" },
-  ".cm-tooltip": { backgroundColor: "var(--bg-menu)", color: "var(--fg)", border: "1px solid var(--line)", borderRadius: "4px", boxShadow: "0 4px 12px var(--shadow)" },
+  // ツールチップは共通の見た目（style.css の .tip-body・#app-tip と同じ色・角丸・影・矢印）
+  ".cm-tooltip.cm-tooltip-hover": { backgroundColor: "var(--tip-bg)", color: "var(--fg)", border: "1px solid var(--tip-line)", borderRadius: "6px", boxShadow: "0 6px 18px var(--shadow)", animation: "tip-in 120ms ease-out" },
+  ".cm-tooltip .cm-tooltip-arrow:before": { borderTopColor: "var(--tip-line)", borderBottomColor: "var(--tip-line)" },
+  ".cm-tooltip .cm-tooltip-arrow:after": { borderTopColor: "var(--tip-bg)", borderBottomColor: "var(--tip-bg)" },
 });
 const darkMode = new Compartment();
 
@@ -146,8 +149,8 @@ export function createEditor(parent: HTMLElement, onChange: () => void, onCursor
         hoverTooltip((view, pos) => {
           const line = view.state.doc.lineAt(pos);
           const h = hover(line.number, line.text, pos - line.from);
-          return h && { pos: line.from + h.from, end: line.from + h.to, above: true, create: () => ({ dom: h.dom }) };
-        }, { hoverTime: 350 }),
+          return h && { pos: line.from + h.from, end: line.from + h.to, above: true, arrow: true, create: () => ({ dom: h.dom }) };
+        }, { hoverTime: 300 }),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChange();
           if (u.docChanged || u.selectionSet) onCursor(u.state.doc.lineAt(u.state.selection.main.head).number);

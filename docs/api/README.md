@@ -6,12 +6,12 @@
 ## CLI
 
 ```powershell
-nclens-cli run work.NCD --out result.json
-nclens-cli run work.NCD --include report,expanded,trace,path
-nclens-cli expand work.NCD --out x.NCD --map x.map.json
-nclens-cli report work.NCD --json
-nclens-cli trace work.NCD --watch '#1,#100'
-cmd /c "nclens-cli expand - --encoding cp932 --out x.NCD < work.NCD"
+nclens-cli run work.nc --out result.json
+nclens-cli run work.nc --include report,expanded,trace,path
+nclens-cli expand work.nc --out x.nc --map x.map.json
+nclens-cli report work.nc --json
+nclens-cli trace work.nc --watch '#1,#100'
+cmd /c "nclens-cli expand - --encoding cp932 --out x.nc < work.nc"
 ```
 
 - 出力は UTF-8。展開 NC は LF 改行で、先頭と末尾に `%` の行を付けます。
@@ -40,7 +40,7 @@ nclens-cli settings init integration.json
 nclens-cli settings check integration.json
 nclens-cli settings show integration.json --set expand.optional_stop=true
 nclens-cli post show --post machine.post.toml --mnemonic fanuc --settings integration.json --set codes.rapid_feed=5000 --format json
-nclens-cli run work.NCD --post machine.post.toml --settings integration.json --set variables.work.G54.x=10 --set expand.block_skip=true
+nclens-cli run work.nc --post machine.post.toml --settings integration.json --set variables.work.G54.x=10 --set expand.block_skip=true
 ```
 
 - 優先順位は既定、ポスト、アプリ設定、`--set` の順。後ろの指定が優先されます。
@@ -58,13 +58,13 @@ nclens-cli run work.NCD --post machine.post.toml --settings integration.json --s
 ## 一括処理と監視
 
 ```powershell
-nclens-cli run C:\NC\incoming 'C:\NC\extra\*.NCD' --out-dir C:\NC\results
+nclens-cli run C:\NC\incoming 'C:\NC\extra\*.nc' --out-dir C:\NC\results
 nclens-cli expand C:\NC\incoming --out-dir C:\NC\results
 nclens-cli report C:\NC\incoming --out-dir C:\NC\results
 nclens-cli watch C:\NC\incoming --out-dir C:\NC\results --post machine.post.toml
 ```
 
-`run` は入力ごとに `<名前>.report.json` と `<名前>.expanded.NCD` を出力します。`--include` を指定した場合は選んだ項目の `<名前>.run.json` も出力します。`expand` と `report` はそれぞれ対応するファイルを出力します。ディレクトリ指定では直下の NC 拡張子を対象にします。異なる入力の拡張子を除いた名前が重なる場合は、その入力を失敗として報告します。
+`run` は入力ごとに `<名前>.report.json` と `<名前>.expanded.NCD` を出力します。`--include` を指定した場合は選んだ項目の `<名前>.run.json` も出力します。`expand` と `report` はそれぞれ対応するファイルを出力します。ディレクトリ指定では直下の NC 拡張子（.nc・.min・.ncd・.dnc・.tap・.cnc・.mpf・.spf・.eia。大小文字の区別なし）を対象にします。異なる入力の拡張子を除いた名前が重なる場合は、その入力を失敗として報告します。
 
 一括処理の標準出力は `input`、`status`、`code`、失敗時の任意の `message` を含む JSON 配列です。終了コードは各入力の最大値です。監視は起動時にある NC と追加・更新された NC を対象にし、500 ms 間隔の 2 回の確認で更新時刻とサイズが同じファイルを処理します。結果は 1 ファイルにつき JSON 1 行です。`Ctrl+C` で終了します。
 
@@ -78,8 +78,8 @@ nclens-server --port 8765
 
 ```powershell
 curl.exe http://127.0.0.1:8765/v1/health
-curl.exe -H "Content-Type: text/plain" --data-binary "@work.NCD" http://127.0.0.1:8765/v1/run
-curl.exe --fail -H "Content-Type: text/plain; charset=cp932" --data-binary "@work.NCD" http://127.0.0.1:8765/v1/expand -o x.NCD
+curl.exe -H "Content-Type: text/plain" --data-binary "@work.nc" http://127.0.0.1:8765/v1/run
+curl.exe --fail -H "Content-Type: text/plain; charset=cp932" --data-binary "@work.nc" http://127.0.0.1:8765/v1/expand -o x.nc
 ```
 
 | メソッドとパス | 応答 |
@@ -110,7 +110,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 payload = {
-    "nc": Path("work.NCD").read_text(encoding="cp932"),
+    "nc": Path("work.nc").read_text(encoding="cp932"),
     "encoding": "cp932",
     "set": {"variables.work.G54.x": 10},
     "include": ["report", "expanded"],
@@ -131,7 +131,7 @@ print(result["report"]["totals"])
 ## GUI の起動引数
 
 ```powershell
-.\nclens.exe 'C:\NC Jobs\work.NCD' --post machine.post.toml --settings integration.json --set variables.work.G54.x=10 --set expand.block_skip=true
+.\nclens.exe 'C:\NC Jobs\work.nc' --post machine.post.toml --settings integration.json --set variables.work.G54.x=10 --set expand.block_skip=true
 ```
 
 指定した NC を開き、ポストとスイッチの設定を反映して実行します。`--post`、`--settings`、`--set` は起動したセッションに適用します。これらを指定したセッションではアプリ設定の自動保存を止めます。

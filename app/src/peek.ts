@@ -5,6 +5,7 @@ import { save, settings } from "./settings";
 import { refreshAppSettings } from "./appsettings";
 import type { DialectSettings, Report, RunResult } from "./types";
 import { fetchReport, reportAction, summaryHtml } from "./report";
+import { hideTip, showTip } from "./tip";
 
 type Occurrence = { from: number; to: number; line: number };
 type Code = {
@@ -33,7 +34,6 @@ export class CodePeek {
   private toggle = document.querySelector<HTMLButtonElement>("#peek-toggle")!;
   private list = document.querySelector<HTMLElement>("#peek-list")!;
   private rail = document.querySelector<HTMLElement>("#peek-rail")!;
-  private tip = document.querySelector<HTMLElement>("#peek-tip")!;
   private table = document.querySelector<HTMLElement>("#tab-expanded")!;
   private prev = this.pane.querySelector<HTMLButtonElement>("[data-offset='-1']")!;
   private next = this.pane.querySelector<HTMLButtonElement>("[data-offset='1']")!;
@@ -236,15 +236,12 @@ export class CodePeek {
     for (const b of buttons) {
       b.onpointerenter = () => this.showTip(b);
       b.onfocus = () => this.showTip(b);
-      b.onpointerleave = b.onblur = () => (this.tip.hidden = true);
+      b.onpointerleave = b.onblur = () => hideTip(b);
     }
   }
 
   private showTip(b: HTMLElement) {
-    this.tip.textContent = b.dataset.tip ?? b.getAttribute("aria-label") ?? "";
-    this.tip.hidden = false;
-    const body = this.tip.parentElement!.getBoundingClientRect(), r = b.getBoundingClientRect();
-    this.tip.style.top = `${r.top - body.top + r.height / 2}px`;
+    showTip(b, b.dataset.tip ?? b.getAttribute("aria-label") ?? "", "right");
   }
 
   /** アイコンの選択と件数（コードの種類の数）を描き直す。選択中のグループを返す */

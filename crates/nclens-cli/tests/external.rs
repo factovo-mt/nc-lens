@@ -192,6 +192,16 @@ fn settings_lifecycle_and_batch_summary() {
     assert_eq!(entries[1]["status"], "success");
     assert!(out.join("good.report.json").is_file());
     assert!(out.join("good.expanded.NCD").is_file());
+
+    // フォルダの一括処理：.min・大文字の .NC も対象、.txt は対象外
+    let more = temp.0.join("more");
+    fs::create_dir(&more).unwrap();
+    fs::write(more.join("a.MIN"), NC).unwrap();
+    fs::write(more.join("b.NC"), NC).unwrap();
+    fs::write(more.join("notes.txt"), NC).unwrap();
+    let result = cli().args(["run", "--out-dir"]).arg(&out).arg(&more).output().unwrap();
+    assert!(result.status.success(), "{result:?}");
+    assert_eq!(json(&result.stdout).as_array().unwrap().len(), 2);
 }
 
 struct Watch(Child);

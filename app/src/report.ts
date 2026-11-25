@@ -117,7 +117,7 @@ export async function reportAction(act: string, r: Report) {
     await invoke("save_file", { path, text: json(r), encoding: "utf-8" });
     return `保存完了：${path}`;
   } catch (err) {
-    await message(`保存失敗：${err}`, { title: "NC Lens", kind: "error" });
+    await message(`${err}`, { title: "保存の失敗", kind: "error" });
     return "";
   }
 }

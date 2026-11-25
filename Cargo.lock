@@ -2038,7 +2038,7 @@ checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 
 [[package]]
 name = "nclens-app"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "encoding_rs",
  "nclens-cli",
@@ -2052,7 +2052,7 @@ dependencies = [
 
 [[package]]
 name = "nclens-cli"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "encoding_rs",
  "glob",
@@ -2064,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "nclens-core"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "serde",
  "serde_json",
@@ -2073,7 +2073,7 @@ dependencies = [
 
 [[package]]
 name = "nclens-server"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "axum",
  "nclens-cli",
@@ -2085,7 +2085,7 @@ dependencies = [
 
 [[package]]
 name = "nclens-wasm"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "encoding_rs",
  "nclens-core",

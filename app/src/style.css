@@ -16,6 +16,7 @@
   --cap-hover: #ffffff1f; --cap-press: #ffffff12;
   --bg-active: #353b48;
   --bg-menu: #252a33;
+  --tip-bg: #2a303a; --tip-line: #3d4452; --warn: #e5c07b;
   --bg-input: #16181d;
   --bg-th: #232730;
   --line: #2f343e;
@@ -84,6 +85,7 @@
   --cap-hover: #0000001a; --cap-press: #00000010;
   --bg-active: #cfd5df;
   --bg-menu: #ffffff;
+  --tip-bg: #ffffff; --tip-line: #c4cad4; --warn: #b7791f;
   --bg-input: #ffffff;
   --bg-th: #eceef2;
   --line: #cdd2da;
@@ -486,12 +488,49 @@ html.fw-dragging, html.fw-dragging * { user-select: none !important; }
 .fw footer { border-radius: 0 0 8px 8px; }
 .pdialog.fw:focus { outline: none; }
 
-/* コードの説明（エディタ・展開結果のツールチップ）。折り返さず、長い行は … で省略 */
-.code-help { max-width: min(640px, 90vw); padding: 4px 8px; font: 12px var(--font-ui); }
-.code-help > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.code-help .ch-head { font: 600 12px var(--font-mono); color: var(--accent); }
-.code-help .ch-note { margin-top: 2px; font-size: 11px; color: var(--fg-dim); }
-#code-tip { position: fixed; z-index: 50; background: var(--bg-menu); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 4px 12px var(--shadow); pointer-events: none; }
+/* ツールチップ（tip.ts・エディタ共通）：見出し行・説明・区切り線・補足。折り返さず … で省略、Ctrl の間は全文 */
+.tip-body { max-width: min(420px, 90vw); padding: 6px 10px; font: 12px var(--font-ui); line-height: 1.6; overflow-x: auto; }
+.tip-full .tip-body { max-width: 90vw; }
+.tip-body > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tip-full .tip-body > div { overflow: visible; text-overflow: clip; }
+.tip-head { font-weight: 600; }
+.tip-code { margin-right: 8px; font: 600 12px var(--font-mono); color: var(--accent); }
+.tip-key { color: var(--fg-dim); }
+.tip-sep { margin: 4px 0; border: 0; border-top: 1px solid var(--tip-line); }
+.tip-note { font-size: 11px; color: var(--fg-dim); }
+#app-tip { position: fixed; z-index: 200; color: var(--fg); background: var(--tip-bg); border: 1px solid var(--tip-line); border-radius: 6px; box-shadow: 0 6px 18px var(--shadow); pointer-events: none; opacity: 0; transition: opacity 120ms ease-out; }
+#app-tip.show { opacity: 1; }
+#app-tip[hidden] { display: none; }
+#app-tip::before, #app-tip::after { content: ""; position: absolute; width: 0; height: 0; border: 7px solid transparent; }
+#app-tip[data-side="above"]::before { top: 100%; left: calc(var(--arrow) - 7px); border-top-color: var(--tip-line); }
+#app-tip[data-side="above"]::after { top: calc(100% - 1px); left: calc(var(--arrow) - 7px); border-top-color: var(--tip-bg); }
+#app-tip[data-side="below"]::before { bottom: 100%; left: calc(var(--arrow) - 7px); border-bottom-color: var(--tip-line); }
+#app-tip[data-side="below"]::after { bottom: calc(100% - 1px); left: calc(var(--arrow) - 7px); border-bottom-color: var(--tip-bg); }
+#app-tip[data-side="right"]::before { right: 100%; top: calc(var(--arrow) - 7px); border-right-color: var(--tip-line); }
+#app-tip[data-side="right"]::after { right: calc(100% - 1px); top: calc(var(--arrow) - 7px); border-right-color: var(--tip-bg); }
+@keyframes tip-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* 確認メッセージ（platform.ts の message）：小さなモーダル。背景を薄く暗く */
+.adlg { min-width: 340px; max-width: min(560px, 92vw); padding: 0; color: var(--fg); background: var(--bg-editor); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 50px var(--shadow); }
+.adlg::backdrop { background: #0005; }
+.adlg[open] { animation: tip-in 120ms ease-out; }
+.adlg .ad-main { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px 14px; }
+.adlg .ad-icon { flex: none; width: 28px; height: 28px; }
+.adlg .ad-icon svg { width: 28px; height: 28px; }
+.adlg[data-kind="warning"] .ad-icon { color: var(--warn); }
+.adlg[data-kind="error"] .ad-icon { color: var(--bad); }
+.adlg[data-kind="info"] .ad-icon { color: var(--accent); }
+.adlg .ad-text { min-width: 0; flex: 1; }
+.adlg h2 { margin: 2px 0 6px; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adlg .ad-body { max-height: 40vh; overflow: auto; font-size: 13px; line-height: 1.6; color: var(--fg-dim); white-space: pre; }
+.adlg form { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px 14px; background: var(--bg-bar); border-top: 1px solid var(--line-soft); border-radius: 0 0 10px 10px; }
+.adlg button { min-width: 84px; padding: 6px 14px; font: 13px var(--font-ui); color: var(--fg); background: var(--bg-input); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.adlg button:hover { background: var(--bg-hover); }
+.adlg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.adlg button.primary { color: var(--fg-on-accent); background: var(--accent); border-color: var(--accent); }
+.adlg button.primary:hover { filter: brightness(1.08); }
+.adlg button.danger { color: var(--bad); border-color: var(--bad); }
+.adlg button.danger:hover { color: var(--fg-on-accent); background: var(--bad); }
 
 /* ヘルプ：折り返さず、はみ出す分は横スクロール */
 #help-body { white-space: nowrap; overflow: auto; }

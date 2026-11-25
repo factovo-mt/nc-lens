@@ -16,6 +16,7 @@ import { explainAt, helpDom, setHelpSource } from "./codehelp";
 import { CodePeek } from "./peek";
 import { openHelp, refreshHelp } from "./help";
 import { LINKS } from "./links";
+import { hideTip, showTip } from "./tip";
 import { bindRunSwitches } from "./breaks";
 import { applyLayout, bindColumns, tableHtml, type Col } from "./coltable";
 import { initMobile, revealNc, setNarrowLayout } from "./mobile";
@@ -389,32 +390,24 @@ const empty = (msg: string) => `<div class="empty">${msg}</div>`;
 let helpBuiltins: DialectSettings[] = [];
 void builtinDialects().then((b) => (helpBuiltins = b)).catch(() => {});
 setHelpSource(() => ({ dialect: runPost()?.mnemonic ?? null, builtins: helpBuiltins }));
-const codeTip = Object.assign(document.createElement("div"), { id: "code-tip", hidden: true });
-document.body.append(codeTip);
-let tipTimer = 0, tipSpan: Element | null = null;
-const hideTip = () => { clearTimeout(tipTimer); tipSpan = null; codeTip.hidden = true; };
+let tipSpan: Element | null = null;
+const hideCodeTip = () => { if (tipSpan) hideTip(tipSpan); tipSpan = null; };
 $("#tab-expanded").addEventListener("mouseover", (e) => {
   const span = (e.target as HTMLElement).closest("td span");
   if (span === tipSpan) return;
-  hideTip();
-  tipSpan = span;
+  hideCodeTip();
   if (!span) return;
-  tipTimer = window.setTimeout(() => {
-    const row = Number(span.closest<HTMLElement>("tr[data-i]")?.dataset.i);
-    const h = explainAt(span.textContent ?? "", 0, result?.expanded[row]?.modal ?? null);
-    if (!h) return;
-    codeTip.replaceChildren(helpDom(h.help));
-    codeTip.hidden = false;
-    const r = span.getBoundingClientRect();
-    codeTip.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - codeTip.offsetWidth - 4))}px`;
-    codeTip.style.top = `${r.top - codeTip.offsetHeight - 4 >= 0 ? r.top - codeTip.offsetHeight - 4 : r.bottom + 4}px`;
-  }, 350);
+  const row = Number(span.closest<HTMLElement>("tr[data-i]")?.dataset.i);
+  const h = explainAt(span.textContent ?? "", 0, result?.expanded[row]?.modal ?? null);
+  if (!h) return;
+  tipSpan = span;
+  showTip(span, h.help);
 });
-$("#tab-expanded").addEventListener("mouseleave", hideTip);
-$("#tab-body").addEventListener("scroll", hideTip, true);
+$("#tab-expanded").addEventListener("mouseleave", hideCodeTip);
 
 // ---- ファイル：新規・開く・保存 ----
-const NC_FILTERS = [{ name: "NC（*.NCD・*.NC・*.MIN・*.nc・*.txt）", extensions: ["NCD", "NC", "MIN", "nc", "txt"] }, { name: "すべて", extensions: ["*"] }];
+// 拡張子：大小文字を区別しない（Linux 等の区別する環境向けに大文字も並べる）。既定は .nc
+const NC_FILTERS = [{ name: "NC ファイル（*.nc;*.min;*.ncd;*.txt）", extensions: ["nc", "min", "ncd", "txt", "NC", "MIN", "NCD", "TXT"] }, { name: "すべて", extensions: ["*"] }];
 
 function showFile() {
   const title = `${file.dirty ? "● " : ""}${file.name} - NC Lens`;
@@ -438,9 +431,9 @@ const baseName = (p: string) => p.split(/[\\/]/).pop() ?? p;
 /** 未保存の変更があれば確かめる。続けてよければ true。 */
 async function confirmDiscard(): Promise<boolean> {
   if (!file.dirty) return true;
-  const yes = "保存", no = "保存しない";
-  const r = await message(`「${file.name}」への変更を保存しますか？`, {
-    title: "NC Lens",
+  const yes = "保存", no = "破棄";
+  const r = await message(`「${file.name}」の編集内容が未保存。\n破棄で編集前の内容へ`, {
+    title: "未保存の変更",
     kind: "warning",
     buttons: { yes, no, cancel: "キャンセル" },
   });
@@ -482,7 +475,7 @@ async function writeText(path: string, text: string, encoding: Encoding) {
 async function saveFile(as: boolean): Promise<boolean> {
   let path = file.path;
   if (as || !path) {
-    const p = await save({ defaultPath: file.path ?? (file.name === "無題" ? "新規.NCD" : file.name.replace(/^見本：/, "")), filters: NC_FILTERS });
+    const p = await save({ defaultPath: file.path ?? (file.name === "無題" ? "無題.nc" : file.name.replace(/^見本：/, "")), filters: NC_FILTERS });
     if (!p) return false;
     path = p;
   }
@@ -495,22 +488,22 @@ async function saveFile(as: boolean): Promise<boolean> {
     $("#run-state").textContent = `保存しました：${path}`;
     return true;
   } catch (e) {
-    await message(`保存できません：${e}`, { title: "NC Lens", kind: "error" });
+    await message(`${e}`, { title: "保存の失敗", kind: "error" });
     return false;
   }
 }
 
 /** 展開結果をストレートパスとして保存。文字コードと改行は今のファイルに合わせる。 */
 async function saveExpanded() {
-  if (!result?.expanded.length) return void (await message("展開結果がありません", { title: "NC Lens" }));
+  if (!result?.expanded.length) return void (await message("展開結果が無いため保存の対象なし", { title: "展開結果の保存" }));
   const stem = file.name.replace(/^見本：/, "").replace(/\.[^.]*$/, "");
-  const path = await save({ defaultPath: `${stem}_展開.NCD`, filters: NC_FILTERS });
+  const path = await save({ defaultPath: `${stem}_展開.nc`, filters: NC_FILTERS });
   if (!path) return;
   try {
     await writeText(path, expandedText(result.expanded.map((_, i) => i)) + file.eol, file.encoding);
     $("#run-state").textContent = `展開結果を保存しました：${path}`;
   } catch (e) {
-    await message(`保存できません：${e}`, { title: "NC Lens", kind: "error" });
+    await message(`${e}`, { title: "保存の失敗", kind: "error" });
   }
 }
 
@@ -865,8 +858,8 @@ if (!isDesktop) {
 async function resetAll() {
   const ok = "初期化";
   const r = await message(
-    `表示の状態（ウィンドウの位置と大きさ、パネルの分割、視点、テーマ、文字の大きさ、下部のタブ、モーダルパネル、再生の速さ）を既定に戻しますか？\n\n設定ファイル：${place.path}`,
-    { title: "表示の状態を初期化", kind: "warning", buttons: { ok, cancel: "キャンセル" } },
+    `ウィンドウ・分割・視点・テーマ・文字の大きさ・タブ・モーダルパネル・再生の速さを既定へ。\n設定ファイル：${place.path}`,
+    { title: "表示の状態の初期化", kind: "warning", buttons: { ok, cancel: "キャンセル" } },
   );
   if (r !== ok && r !== "Ok") return;
   resetView();

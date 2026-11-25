@@ -11,7 +11,6 @@ import type { DialectSettings, PostProfile } from "./types";
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const baseName = (p: string) => p.split(/[\\/]/).pop() ?? p;
-const TITLE = "ポスト・コード定義";
 
 /** ページ：ポストの 3 つとコード定義の 6 つ */
 const PAGES: [string, string][] = [
@@ -142,9 +141,9 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         el.select();
       },
       async del() {
-        if (st.sets.length <= 1) return void (await message("セット：1 つ以上必要", { title: TITLE }));
+        if (st.sets.length <= 1) return void (await message("セットは 1 つ以上必要。最後のセットは削除不可", { title: "セットの削除", kind: "warning" }));
         const name = cur().profile.name;
-        const r = await message(`セット「${name}」の削除（一覧のみ。ポスト設定のファイルは対象外）`, { title: TITLE, kind: "warning", buttons: { ok: "削除", cancel: "キャンセル" } });
+        const r = await message(`セット「${name}」を一覧から削除。\nポスト設定のファイルは残す`, { title: "セットの削除", kind: "warning", buttons: { ok: "削除", cancel: "キャンセル" } });
         if (r !== "削除" && r !== "Ok") return;
         st.sets.splice(sel, 1);
         if (st.current === name) st.current = st.sets[0].profile.name;
@@ -170,7 +169,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         try {
           await addSet({ profile: await invoke<PostProfile>("post_load", { path }), path: nativePath });
         } catch (e) {
-          await message(`ポストの読み込み失敗：${e}`, { title: TITLE, kind: "error" });
+          await message(`${e}`, { title: "ポストの読み込みの失敗", kind: "error" });
         }
       },
       async export() {
@@ -187,7 +186,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
           showFile();
           showErrors([], `書き出し完了：${path}`);
         } catch (e) {
-          await message(`書き出し失敗：${e}`, { title: TITLE, kind: "error" });
+          await message(`${e}`, { title: "書き出しの失敗", kind: "error" });
         }
       },
       async apply() {
@@ -211,15 +210,18 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
             sel = st.sets.indexOf(s);
             list();
             fill();
-            return void (await message(`保存失敗（${s.path}）：${e}`, { title: TITLE, kind: "error" }));
+            return void (await message(`${s.path}\n${e}`, { title: "保存の失敗", kind: "error" }));
           }
         }
         finish(st);
       },
       async cancel() {
         if (dirty || changed.size) {
-          const r = await message("ポスト・コード定義の変更の破棄", { title: TITLE, kind: "warning", buttons: { ok: "破棄", cancel: "キャンセル" } });
-          if (r !== "破棄" && r !== "Ok") return;
+          const names = [...changed].map((c) => c.profile.name);
+          const what = names.length ? `セット ${names.slice(0, 2).join("・")}${names.length > 2 ? ` ほか ${names.length - 2} 件` : ""}の変更` : "セットの一覧の変更";
+          const r = await message(`${what}が未保存。\n破棄で元の値へ`, { title: "未保存の変更", kind: "warning", buttons: { yes: "保存", no: "破棄", cancel: "キャンセル" } });
+          if (r === "保存") return void (await actions.apply());
+          if (r !== "破棄") return;
         }
         finish(null);
       },
@@ -235,7 +237,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
           await invoke("dialect_save", { path, dialect: s.profile.mnemonic });
           showErrors([], `ニーモニック・固有の書き出し完了：${path}`);
         } catch (e) {
-          await message(`書き出し失敗：${e}`, { title: TITLE, kind: "error" });
+          await message(`${e}`, { title: "書き出しの失敗", kind: "error" });
         }
         return;
       }
@@ -247,7 +249,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         fill();
         showErrors([], `ニーモニック・固有の読み込み完了：${typeof path === "string" ? path : path.name}`);
       } catch (e) {
-        await message(`ニーモニック・固有の読み込み失敗：${e}`, { title: TITLE, kind: "error" });
+        await message(`${e}`, { title: "ニーモニック・固有の読み込みの失敗", kind: "error" });
       }
     };
     const onClick = async (e: MouseEvent) => {

@@ -1,0 +1,18 @@
+[package]
+name = "nclens-cli"
+version = "0.2.4"
+edition = "2021"
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "nclens-cli"
+path = "src/main.rs"
+
+[dependencies]
+encoding_rs = "0.8"
+nclens-core = { path = "../nclens-core" }
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.11"
+glob = "0.3"

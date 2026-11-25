@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web デバッグ（Edge、localhost:5174）",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5174/",
+      "webRoot": "${workspaceFolder}/app",
+      "preLaunchTask": "Web 開発起動（vite、http://localhost:5174）"
+    },
+    {
+      "name": "GUI デバッグ（nclens-app）",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/nclens.exe",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "GUI ビルド（debug、インストーラなし）"
+    },
+    {
+      "name": "ローカル API デバッグ（nclens-server）",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/nclens-server.exe",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "外部連携ビルド（nclens-cli / nclens-server）"
+    }
+  ]
+}

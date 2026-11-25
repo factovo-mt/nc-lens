@@ -1,0 +1,35 @@
+// VS Code の .vscode/launch.json と対
+[
+  {
+    "label": "Web デバッグ（Chrome、localhost:5174。先に Web 開発起動のタスク）",
+    "adapter": "JavaScript",
+    "type": "chrome",
+    "request": "launch",
+    "url": "http://localhost:5174/",
+    "webRoot": "$ZED_WORKTREE_ROOT/app"
+  },
+  {
+    "label": "GUI デバッグ（nclens-app）",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/target/debug/nclens.exe",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "build": {
+      "command": "pnpm",
+      "args": ["tauri", "build", "--debug", "--no-bundle"],
+      "cwd": "$ZED_WORKTREE_ROOT/app"
+    }
+  },
+  {
+    "label": "ローカル API デバッグ（nclens-server）",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/target/debug/nclens-server.exe",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "build": {
+      "command": "cargo",
+      "args": ["build", "--locked", "-p", "nclens-cli", "-p", "nclens-server"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    }
+  }
+]

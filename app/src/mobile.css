@@ -1,0 +1,192 @@
+/* ---- 狭い幅の配置：スマホ・タブレット（W34・W35。mobile.ts）----
+   html.rl は狭い幅の配置を使うとき（Web 版は常に、デスクトップ版はアプリ設定の『自動』のとき）。広い幅は style.css のまま。
+   html.web は Web 版だけ（タッチ前提の設定）。デスクトップ版はマウス・キーボードの操作を保つ。条件は mobile.ts の PHONE・TABLET と同じ。折り返さず、収まらない分はスクロール */
+.m-only, #mtabs, #msheet { display: none; }
+
+/* 描画はアプリがタッチを受ける（1 本指・2 本指・ピンチ）。区切り線のドラッグもタッチで */
+html.web #viewer canvas, html.web .splitter, html.web .mp-grip, html.web .split-bar { touch-action: none; }
+
+/* ---- タブレットとスマホ：ページ全体の拡大は止める（各欄のピンチは文字の大きさ）。アドレスバーの伸縮に合わせて高さを変える ---- */
+@media (max-width: 1199px) {
+  html.web { touch-action: pan-x pan-y; }
+  html.rl #app { height: 100dvh; }
+  /* 文字の大きさ：端末の既定（16px）。iOS の入力時の自動拡大も起きない */
+  html.web #editor .cm-editor { font-size: calc(16px * var(--ed-zoom, 1)); }
+}
+
+/* ---- タブレット：エディタ＋描画と下部の展開結果。使用コードは右からスライドで開閉 ---- */
+@media (min-width: 768px) and (max-width: 1199px) and (min-height: 541px) {
+  html.rl #workspace { position: relative; overflow: hidden; grid-template-columns: minmax(0, min(var(--editor-w), calc(100% - 145px))) 4px minmax(0, 1fr) 0; }
+  html.rl #code-peek {
+    position: absolute; top: 26px; right: 0; bottom: 0; z-index: 5; /* 描画の見出し（開閉のボタン）は覆わない */ width: clamp(260px, 42vw, 440px);
+    border-left: 1px solid var(--line); box-shadow: -8px 0 24px var(--shadow);
+    transition: transform 0.22s ease, visibility 0.22s;
+  }
+  html.rl #code-peek[hidden] { display: flex; visibility: hidden; transform: translateX(100%); box-shadow: none; }
+  html.rl #code-peek > .splitter { display: none; }
+  html.rl #peek-toggle { width: 36px; height: 24px; }
+  html.rl .splitter { min-width: 4px; }
+}
+
+/* ---- スマホ（W35）：上にファイル名と最小限のボタン、その下に描画（常に表示）、境界、再生、タブで切り替えるパネル ----
+   #workspace は箱を作らず（display: contents）、描画・エディタ・使用コードを #app の格子へ直に置く */
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 540px) {
+  html.rl #app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, var(--mview-h, 45%)) auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "top" "view" "grip" "play" "stat" "panel" "tabs";
+  }
+
+  /* 上：メニュー・ファイル名・開く。ノッチの分は帯の中で空ける */
+  html.rl #menubar {
+    grid-area: top; height: auto; min-height: calc(44px + env(safe-area-inset-top)); gap: 4px;
+    padding: env(safe-area-inset-top) max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left));
+  }
+  html.rl .m-only { display: grid; place-items: center; }
+  html.rl .m-btn { flex: none; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 6px; font-size: 14px; }
+  html.rl .m-btn:active, html.rl .ms-back:active { background: var(--bg-hover); }
+  html.rl .m-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+  html.rl #file-name { flex: 1; min-width: 0; margin-left: 4px; font-size: 13px; }
+
+  /* 描画は常に出す。パネルは下部のタブで 1 つだけ出し、自分の領域の中でスクロール。隠すだけなので状態は保つ */
+  html.rl #workspace { display: contents; }
+  html.rl #view-pane { grid-area: view; min-height: 0; background: var(--bg-editor); }
+  html.rl #editor-pane, html.rl #code-peek, html.rl #bottom { grid-area: panel; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg-editor); }
+  html.rl #split-v, html.rl #split-h, html.rl #code-peek > .splitter { display: none; }
+  html.rl #editor-pane, html.rl #code-peek, html.rl #bottom { display: none; }
+  html.rl[data-mtab="nc"] #editor-pane, html.rl[data-mtab="modal"] #editor-pane { display: flex; }
+  html.rl[data-mtab="code"] #code-peek, html.rl[data-mtab="code"] #code-peek[hidden] { display: flex; padding-left: 0; }
+  html.rl[data-mtab="out"] #bottom, html.rl[data-mtab="vars"] #bottom { display: flex; }
+
+  /* 描画とパネルの境界（mobile.ts の #m-grip）：ドラッグで描画の大きさ */
+  html.rl #m-grip { grid-area: grip; position: relative; z-index: 2; height: 14px; background: var(--bg-bar); border-top: 1px solid var(--line); cursor: row-resize; touch-action: none; }
+  /* 指で掴みやすいよう、受ける範囲は見た目より上下へ広げる */
+  html.rl #m-grip::before { content: ""; position: absolute; inset: -12px 0; }
+  html.rl #m-grip::after { content: ""; position: absolute; left: 50%; top: 50%; width: 40px; height: 4px; margin: -2px 0 0 -20px; border-radius: 2px; background: var(--fg-dim); opacity: 0.5; }
+  html.rl #m-grip.drag::after { background: var(--accent); opacity: 1; }
+  html.rl .pane-title { height: auto; min-height: 36px; display: flex; align-items: center; }
+
+  /* NC：エディタだけ（見出しは上のファイル名）。モーダルは自分のタブ */
+  html.rl #editor-pane > .pane-title, html.rl[data-mtab="nc"] #modal-panel { display: none; }
+  html.rl #break-status button { min-height: 34px; }
+  html.rl[data-mtab="modal"] #editor, html.rl[data-mtab="modal"] #break-status { display: none; }
+  html.rl[data-mtab="modal"] #modal-panel, html.rl[data-mtab="modal"] #modal-panel.hidden { display: flex; flex: 1; max-height: none; border-bottom: 0; }
+  html.rl[data-mtab="modal"] .mp-body, html.rl[data-mtab="modal"] #modal-panel.collapsed .mp-body { display: block; flex: 1; max-height: none !important; }
+  html.rl[data-mtab="modal"] .mp-grip, html.rl[data-mtab="modal"] .mp-fold, html.rl[data-mtab="modal"] .mp-close { display: none; }
+  html.rl .mp-head { height: 40px; }
+  html.rl .mp-head button { min-height: 34px; padding: 0 10px; }
+
+  /* 描画：見出しの行に視点とフィット。4 分割は使わない（視点の切り替えは残す） */
+  html.rl #view-pane > .pane-title { gap: 6px; padding: 4px 6px; overflow: auto hidden; scrollbar-width: none; }
+  html.rl #view-pane > .pane-title > * { flex: none; }
+  html.rl #view-pane > .pane-title > .spacer { flex: 1; }
+  html.rl #view-pane .seg button { min-width: 44px; min-height: 36px; }
+  html.rl #view-pane [data-cmd="fit"] { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; }
+  html.rl #view-name, html.rl #peek-toggle, html.rl #layout { display: none; }
+
+  /* 展開結果：下位のタブは横にスクロール、行は指で選びやすい高さ */
+  html.rl #tabs { overflow: auto hidden; scrollbar-width: none; }
+  html.rl #tabs > * { flex: none; }
+  html.rl #tabs button { min-height: 40px; }
+  html.rl #tab-body td { padding-top: 6px; padding-bottom: 6px; }
+
+  /* 使用コード（集計を含む）：上に距離・時間などの帯 */
+  html.rl #statusbar { grid-area: stat; display: none; min-height: 30px; padding: 0 max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+  html.rl[data-mtab="code"] #statusbar { display: flex; }
+  html.rl #code-peek .pane-title { min-height: 40px; }
+  html.rl #code-peek .pane-title button { min-width: 40px; min-height: 34px; }
+
+  /* 下：再生の操作（親指で押せる 44px 以上）。上の段に再生位置 */
+  html.rl #toolbar {
+    grid-area: play; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "seek time" "play play" "pos pos";
+    align-items: center; gap: 0 10px; height: auto; overflow: visible;
+    padding: 2px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+    border-top: 1px solid var(--line); border-bottom: 0;
+  }
+  html.rl #toolbar > * { display: none; }
+  html.rl #toolbar > #seek { display: block; grid-area: seek; width: 100%; min-width: 0; height: 30px; margin: 0; }
+  html.rl #toolbar > #play-time { display: block; grid-area: time; }
+  html.rl #toolbar > #play { display: flex; grid-area: play; justify-content: space-between; gap: 2px; padding: 0; background: none; border: 0; }
+  html.rl #play button { flex: 1 1 0; min-width: 44px; min-height: 44px; padding: 0; font-size: 18px; border-radius: 6px; }
+  /* 現在の行と再生位置の座標の 1 行（折り返さず、収まらない分は横にスクロール） */
+  html.rl #toolbar > #m-pos { display: flex; grid-area: pos; gap: 12px; min-width: 0; min-height: 20px; align-items: center; overflow: auto hidden; scrollbar-width: none; white-space: nowrap; font: 12px var(--font-mono); color: var(--fg-dim); }
+  html.rl #m-pos > * { flex: none; }
+
+  /* 下：領域のタブ（アイコン＋短い名前）。ホームバーの分は帯の中で空ける */
+  html.rl #mtabs {
+    grid-area: tabs; display: flex; background: var(--bg-bar); border-top: 1px solid var(--line); overflow: auto hidden; scrollbar-width: none;
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  html.rl #mtabs button { flex: 1 0 auto; min-width: 56px; padding: 0 4px; white-space: nowrap; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; overflow: hidden; font-size: 11px; color: var(--fg-dim); }
+  html.rl #mtabs button[aria-selected="true"] { color: var(--accent); box-shadow: inset 0 2px var(--accent); }
+  html.rl #mtabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* メニューのシート（ツールバーの残りとメニューバーの項目） */
+  html.rl #msheet.open { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; background: var(--bg-editor); }
+  html.rl #msheet > header {
+    display: flex; flex: none; align-items: center; gap: 8px; min-height: calc(44px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left));
+    background: var(--bg-bar); border-bottom: 1px solid var(--line);
+  }
+  html.rl .ms-back { min-width: 44px; height: 44px; padding: 0 12px; border-radius: 6px; font-size: 15px; }
+  html.rl .ms-body { flex: 1; min-height: 0; overflow: auto; padding: 4px max(12px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  html.rl .ms-sec h3, html.rl #ms-menus .menu-title { display: block; margin: 14px 0 6px; padding: 0; font-size: 12px; font-weight: 600; color: var(--accent); background: none; pointer-events: none; }
+  html.rl .ms-row { display: flex; align-items: center; gap: 8px; min-height: 48px; overflow: auto hidden; }
+  html.rl .ms-row > * { flex: none; }
+  html.rl .ms-row > span { color: var(--fg-dim); }
+  html.rl #speed { min-height: 40px; padding: 0 8px; font-size: 14px; }
+  html.rl #ms-tools .tb-pair { display: flex; }
+  html.rl #ms-tools .tb-icon { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; color: var(--fg-dim); border: 1px solid var(--line); border-radius: 6px; }
+  html.rl #ms-tools .tb-pair .tb-icon { border-radius: 6px 0 0 6px; }
+  html.rl #ms-tools .tb-more { width: 36px; border: 1px solid var(--line); border-left: 0; border-radius: 0 6px 6px 0; }
+  html.rl #ms-tools .tb-icon::after { content: attr(aria-label); font-size: 13px; }
+  html.rl #ms-tools .tb-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+  html.rl #ms-tools .tb-icon circle { fill: currentColor; stroke: none; }
+  html.rl #ms-tools [data-switch][aria-pressed="true"] { color: var(--ok-fg); background: var(--ok-bg); border-color: var(--ok-line); }
+  html.rl #ms-menus .menu-items { display: block; position: static; min-width: 0; width: auto; padding: 0; box-shadow: none; }
+  html.rl #ms-menus .menu-items button { min-height: 44px; align-items: center; font-size: 15px; }
+  html.rl #ms-menus kbd { display: none; }
+  html.rl #ghost-menu, html.rl #view-ctx, html.rl #ctx { z-index: 300; }
+
+  /* 浮動ウィンドウ（セット・アプリ設定・レポート・ヘルプ）：全画面のシート。閉じるは右上、端末の戻る操作でも閉じる */
+  html.rl .pdialog.fw { left: 0 !important; top: 0 !important; width: 100% !important; height: 100dvh !important; border: 0; border-radius: 0; box-shadow: none; }
+  html.rl .fw .fw-head { min-height: calc(44px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); padding-left: max(12px, env(safe-area-inset-left)); border-radius: 0; cursor: default; }
+  html.rl .fw-rz, html.rl .fw-btns [data-fw="min"], html.rl .fw-btns [data-fw="max"], html.rl .pdialog header .pnote { display: none; }
+  html.rl .fw-btns { margin-right: env(safe-area-inset-right); }
+  html.rl .fw-btns button { width: 52px; min-height: 44px; }
+  html.rl .fw-btns button.fw-close { border-radius: 0; }
+  html.rl .fw-btns svg { width: 14px; height: 14px; }
+  html.rl .pdialog footer { padding-bottom: max(8px, env(safe-area-inset-bottom)); border-radius: 0; }
+  html.rl .pbody { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  html.rl .pbtn { min-height: 40px; }
+  /* 一覧・ページの一覧は上に縦へ積む（ページは横にスクロール） */
+  html.rl .smain { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+  html.rl .amain { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  html.rl .dlist { max-height: 30dvh; border-right: 0; border-bottom: 1px solid var(--line); }
+  html.rl .dlist-btns { grid-template-columns: repeat(4, max-content); overflow: auto hidden; }
+  html.rl .spages { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); overflow: auto hidden; scrollbar-width: none; }
+  html.rl .spages > * { flex: none; }
+  html.rl .spages button { min-height: 40px; }
+  html.rl .spage-group { padding: 0 4px 0 10px; border-top: 0; }
+  html.rl .pcols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* スマホの横向き：左に描画と再生、右にタブとパネル。境界は縦の線（ドラッグで描画の幅） */
+@media (max-width: 767px) and (orientation: landscape), (max-width: 1023px) and (max-height: 540px) and (orientation: landscape) {
+  html.rl #app {
+    grid-template-columns: minmax(0, var(--mview-w, 50%)) auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "top top top" "view grip tabs" "view grip stat" "view grip panel" "play grip panel";
+  }
+  html.rl #m-grip { width: 14px; height: auto; border-top: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); cursor: col-resize; }
+  html.rl #m-grip::after { width: 4px; height: 40px; margin: -20px 0 0 -2px; }
+  html.rl #m-grip::before { inset: 0 -12px; }
+  html.rl #toolbar { padding-top: 0; padding-bottom: 2px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: 8px; }
+  html.rl #toolbar > #seek { height: 26px; }
+  html.rl #play button { min-height: 44px; font-size: 16px; }
+  html.rl #mtabs { padding: 0 env(safe-area-inset-right) 0 0; border-top: 0; border-bottom: 1px solid var(--line); }
+  html.rl #mtabs button { flex-direction: row; gap: 4px; min-height: 44px; font-size: 12px; }
+  html.rl #mtabs button[aria-selected="true"] { box-shadow: inset 0 -2px var(--accent); }
+  html.rl #mtabs svg { width: 18px; height: 18px; }
+  html.rl #editor-pane, html.rl #code-peek, html.rl #bottom { padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
+}

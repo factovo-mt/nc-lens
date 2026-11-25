@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nclens:run-output:v1",
+  "title": "NC Lens run output v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {"const":1},
+    "input": {
+      "type": "object",
+      "properties": {"filename":{"type":"string"},"encoding":{"enum":["utf-8","cp932"]}},
+      "required": ["filename","encoding"]
+    },
+    "post": {
+      "type": "object",
+      "properties": {"name":{"type":"string"},"hash":{"type":"string","pattern":"^[0-9a-f]{64}$"}},
+      "required": ["name","hash"]
+    },
+    "block_skip_usage": {
+      "type":"array",
+      "items":{
+        "type":"object",
+        "properties":{"level":{"type":"integer","minimum":1,"maximum":9},"line_count":{"type":"integer","minimum":1}},
+        "required":["level","line_count"]
+      }
+    },
+    "report": {"$ref":"#/$defs/report"},
+    "expanded": {"type":"array","items":{"$ref":"#/$defs/expanded"}},
+    "trace": {"type":"array","items":{"$ref":"#/$defs/trace"}},
+    "path": {"type":"array","items":{"$ref":"#/$defs/segment"}},
+    "diagnostics": {"description":"実行エラー。同一ブロックの重複を error に設定した場合は行番号と対象を記録する。","type":"array","items":{"$ref":"#/$defs/diagnostic"}},
+    "warnings": {"description":"実行を継続した警告。重複ワードの採用値や M コードの上限超過を含む。","type":"array","items":{"$ref":"#/$defs/diagnostic"}},
+    "tools": {"type":"array","items":{"$ref":"#/$defs/tool"}},
+    "stops": {"type":"array","items":{"$ref":"#/$defs/stop"}}
+  },
+  "required": ["schema_version","input","post","diagnostics","warnings","tools","stops"],
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "properties": {"src_line":{"type":"integer","minimum":1},"message":{"type":"string"}},
+      "required": ["src_line","message"]
+    },
+    "modal": {
+      "type": "object",
+      "properties": {
+        "g_codes": {"type":"object","additionalProperties":{"type":["number","null"]}},
+        "feed": {"type":["number","null"]},
+        "spindle": {"type":["number","null"]},
+        "tool": {"type":"integer","minimum":0},
+        "h": {"type":"integer","minimum":0},
+        "d": {"type":"integer","minimum":0},
+        "work_coordinate": {"type":["number","null"]},
+        "plane": {"type":["number","null"]},
+        "absolute": {"type":"boolean"},
+        "position": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 6,
+          "maxItems": 6
+        }
+      },
+      "required": ["g_codes","feed","spindle","tool","h","d","work_coordinate","plane","absolute","position"]
+    },
+    "expanded": {
+      "type": "object",
+      "properties": {
+        "text": {"type":"string"},
+        "src_line": {"type":"integer","minimum":1},
+        "call_stack": {"type":"array","items":{"type":"string"}},
+        "modal": {"$ref":"#/$defs/modal"},
+        "source_g_codes": {"type":"object","additionalProperties":{"type":["number","null"]}}
+      },
+      "required": ["text","src_line","call_stack","modal"]
+    },
+    "segment": {
+      "type": "object",
+      "properties": {
+        "kind": {"enum":["Rapid","Cut"]},
+        "from": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "to": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "comp_from": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "comp_to": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "src_line": {"type":"integer","minimum":1},
+        "tool_index": {"type":"integer","minimum":0},
+        "time_sec": {"type":["number","null"]},
+        "expanded_index": {"type":"integer","minimum":0}
+      },
+      "required": ["kind","from","to","src_line","tool_index","time_sec","expanded_index"]
+    },
+    "trace": {
+      "type": "object",
+      "properties": {
+        "seq": {"type":"integer","minimum":1},
+        "src_line": {"type":"integer","minimum":1},
+        "call_stack": {"type":"array","items":{"type":"string"}},
+        "source": {"type":"string"},
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src_line": {"type":"integer","minimum":1},
+              "var": {"type":"integer","minimum":0},
+              "value": {"type":["number","null"]}
+            },
+            "required": ["src_line","var","value"]
+          }
+        }
+      },
+      "required": ["seq","src_line","call_stack","source","writes"]
+    },
+    "stop": {
+      "type": "object",
+      "properties": {
+        "expanded_index": {"type":"integer","minimum":0},
+        "src_line": {"type":"integer","minimum":1},
+        "kind": {"enum":["M00","M01"]}
+      },
+      "required": ["expanded_index","src_line","kind"]
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "number": {"type":"integer","minimum":0},
+        "diameter_mm": {"type":["number","null"]},
+        "corner_radius_mm": {"type":["number","null"]},
+        "flute_length_mm": {"type":["number","null"]},
+        "stickout_mm": {"type":["number","null"]},
+        "kind": {"enum":["end_mill","ball","drill","tap","boring","unknown"]},
+        "name": {"type":["string","null"]},
+        "comment": {"type":["string","null"]},
+        "source": {"enum":["post","d_offset","comment","default"]}
+      },
+      "required": ["number","diameter_mm","corner_radius_mm","flute_length_mm","stickout_mm","kind","name","comment","source"]
+    },
+    "bounds": {
+      "type": "object",
+      "properties": {"work":{"$ref":"#/$defs/range"},"machine":{"$ref":"#/$defs/range"}},
+      "required": ["work","machine"]
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "max": {
+          "type": "array",
+          "items": {"type":["number","null"]},
+          "minItems": 6,
+          "maxItems": 6
+        }
+      },
+      "required": ["min","max"]
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "cut_length_mm": {"type":["number","null"]},
+        "cut_time_sec": {"type":["number","null"]},
+        "rapid_length_mm": {"type":["number","null"]},
+        "rapid_time_sec": {"type":["number","null"]},
+        "other_length_mm": {"type":["number","null"]},
+        "other_time_sec": {"type":["number","null"]}
+      },
+      "required": ["cut_length_mm","cut_time_sec","rapid_length_mm","rapid_time_sec","other_length_mm","other_time_sec"]
+    },
+    "breakdown": {
+      "type": "object",
+      "properties": {
+        "totals": {"$ref":"#/$defs/totals"},
+        "bounds": {"$ref":"#/$defs/bounds"},
+        "used_lines": {"type":"array","items":{"type":"integer","minimum":1}}
+      },
+      "required": ["totals","bounds","used_lines"]
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "filename": {"type":"string"},
+        "generated_at_unix_seconds": {"type":"integer","minimum":0},
+        "dialect": {"type":"string"},
+        "post_name": {"type":"string"},
+        "totals": {"$ref":"#/$defs/totals"},
+        "feed_min": {"type":["number","null"]},
+        "feed_max": {"type":["number","null"]},
+        "bounds": {"$ref":"#/$defs/bounds"},
+        "tools": {"type":"object","additionalProperties":{"$ref":"#/$defs/breakdown"}},
+        "programs": {"type":"object","additionalProperties":{"$ref":"#/$defs/breakdown"}},
+        "errors": {"type":"integer","minimum":0},
+        "warnings": {"type":"integer","minimum":0}
+      },
+      "required": ["filename","generated_at_unix_seconds","dialect","post_name","totals","feed_min","feed_max","bounds","tools","programs","errors","warnings"]
+    }
+  }
+}

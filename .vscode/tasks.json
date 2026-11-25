@@ -1,0 +1,66 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Web 開発起動（vite、http://localhost:5174）",
+      "type": "shell",
+      "command": "pnpm dev:web",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never__$" },
+        "background": { "activesBegin": ".", "beginsPattern": "wasm-bindgen|VITE", "endsPattern": "Local:|ready in" }
+      }
+    },
+    {
+      "label": "GUI 開発起動（tauri dev）",
+      "type": "shell",
+      "command": "pnpm tauri dev",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "GUI ビルド（debug、インストーラなし）",
+      "type": "shell",
+      "command": "pnpm tauri build --debug --no-bundle",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "GUI インストーラのビルド（release、NSIS・MSI）",
+      "type": "shell",
+      "command": "pnpm tauri build",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "group": "build",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "外部連携ビルド（nclens-cli / nclens-server）",
+      "type": "process",
+      "command": "cargo",
+      "args": ["build", "--locked", "-p", "nclens-cli", "-p", "nclens-server"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "ローカル API 起動（nclens-server）",
+      "type": "process",
+      "command": "cargo",
+      "args": ["run", "--locked", "-p", "nclens-server"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo test",
+      "type": "shell",
+      "command": "cargo test --workspace --locked",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": ["$rustc"]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+
+[package]
+name = "nclens-server"
+version = "0.2.4"
+edition = "2021"
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "1", features = ["net", "rt-multi-thread", "sync", "time"] }
+nclens-cli = { path = "../nclens-cli" }
+nclens-core = { path = "../nclens-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

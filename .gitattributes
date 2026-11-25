@@ -1,0 +1,9 @@
+* text=auto
+*.NCD -text
+*.NCL -text
+*.LST -text
+*.DNC -text
+*.lpt -text
+*.prm -text
+*.CTL -text
+tests/golden/** whitespace=cr-at-eol

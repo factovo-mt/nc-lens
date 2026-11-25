@@ -1,0 +1,43 @@
+NC Lens 使用許諾
+
+著作権 (c) 2026 FACTOVO
+
+NC Lens は MIT ライセンスで提供します。インストールと使用にあたっては、以下のライセンスをご確認ください。日本語訳は参考訳です。解釈に相違がある場合は英語原文が優先されます。
+
+第三者の部品にはそれぞれのライセンスが適用されます。
+詳細は同梱の THIRD_PARTY_LICENSES.md をご覧ください。
+
+お問い合わせ先
+FACTOVO（NC Lens リポジトリの Issues）
+
+英語原文
+
+MIT License
+
+Copyright (c) 2026 FACTOVO
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+日本語参考訳
+
+本ソフトウェアおよび付属文書の複製物（以下「本ソフトウェア」）を入手したすべての人に対し、以下の条件の下で、本ソフトウェアを無償かつ制限なく取り扱うことを許諾します。この許諾には、本ソフトウェアを使用、複製、改変、結合、公開、配布、再許諾、販売する権利、および本ソフトウェアの提供を受けた者に同じことを許諾する権利が含まれます。
+
+上記の著作権表示およびこの許諾表示を、本ソフトウェアのすべての複製物または実質的な部分に含めなければなりません。
+
+本ソフトウェアは現状のまま提供されます。商品性、特定目的への適合性、権利の非侵害を含め、明示または黙示を問わず、いかなる保証もありません。著作者および著作権者は、契約、不法行為、その他の原因を問わず、本ソフトウェア、本ソフトウェアの使用、またはその他の取り扱いに起因し、または関連して生じる請求、損害、その他の責任を一切負いません。

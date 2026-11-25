@@ -1,0 +1,7 @@
+node_modules/
+dist/
+/dist-web/
+/.wasm/
+/.wrangler/
+src-tauri/target/
+src-tauri/gen/

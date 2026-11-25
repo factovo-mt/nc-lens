@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+# app/src-tauri は W07 が追加
+members = ["crates/*", "app/src-tauri"]
+
+[workspace.package]
+license = "MIT"
+authors = ["FACTOVO"]

@@ -1,0 +1,59 @@
+version = 1
+name = "Default"
+comment = ""
+
+[codes]
+duplicate_word = "last"
+warn_on_duplicate = true
+duplicate_g_group = "last"
+max_m_per_block = 3
+duplicate_m = "all"
+rapid_mm_min = 5000.0
+max_rpm = 8000.0
+atc_sec = 0.0
+compensation_sec = 0.0
+g73_retract_mm = 0.5
+g83_clearance_mm = 1.0
+decimal_places = 3
+integer_units = "least_increment"
+compensation = "FANUC-C"
+tool_change = "m6"
+macro_variables = "15M"
+t_call = false
+s_call = false
+b_call = false
+ignore_g = []
+ignore_m = []
+program_address = "O"
+
+[codes.m_calls]
+
+[codes.g_calls]
+
+[variables]
+external = [0.0, 0.0, 0.0]
+work = [
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+]
+g28 = [0.0, 0.0, 0.0]
+g30 = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+
+[variables.common]
+
+[variables.offsets]
+
+[variables.tools]
+
+[expand]
+cycles = false
+g10 = false
+decimal_point = true
+omit_zero_moves = false
+distance_mode = "preserve"
+block_skip = false
+block_skip_levels = [1]

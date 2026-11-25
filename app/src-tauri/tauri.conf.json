@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "NC Lens",
+  "mainBinaryName": "nclens",
+  "version": "0.2.4",
+  "identifier": "com.factovo.nclens",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "NC Lens",
+        "width": 1400,
+        "height": 860,
+        "minWidth": 360,
+        "minHeight": 560,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "msi"
+    ],
+    "license": "MIT",
+    "licenseFile": "../../scratch/nclens-license.rtf",
+    "publisher": "FACTOVO",
+    "copyright": "Copyright (c) 2026 FACTOVO",
+    "shortDescription": "NC プログラムのカスタムマクロと四則演算の展開",
+    "longDescription": "FANUC 系 NC プログラムのカスタムマクロと四則演算を展開し、変数の変化や工具経路を確認できるアプリ",
+    "resources": {
+      "../../THIRD_PARTY_LICENSES.md": "THIRD_PARTY_LICENSES.md",
+      "gen/samples/": "samples/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "languages": [
+          "Japanese"
+        ],
+        "displayLanguageSelector": false,
+        "installMode": "currentUser",
+        "startMenuFolder": "NC Lens",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/installer/header.bmp",
+        "sidebarImage": "icons/installer/sidebar.bmp"
+      },
+      "wix": {
+        "language": "ja-JP",
+        "bannerPath": "icons/installer/banner.bmp",
+        "dialogImagePath": "icons/installer/dialog.bmp"
+      }
+    }
+  }
+}

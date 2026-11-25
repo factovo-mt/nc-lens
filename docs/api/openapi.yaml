@@ -1,0 +1,212 @@
+
+openapi: 3.1.0
+info:
+  title: NC Lens Local API
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8765
+paths:
+  /v1/run:
+    post:
+      operationId: runNc
+      requestBody:
+        $ref: '#/components/requestBodies/NC'
+      responses:
+        '200':
+          $ref: '#/components/responses/RunOutput'
+        '422':
+          description: NC のエラー。解析できた範囲の結果を含む。文字コードのエラーは message を返す。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: './run-output.schema.json'
+                  - $ref: '#/components/schemas/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '408':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/expand:
+    post:
+      operationId: expandNc
+      requestBody:
+        $ref: '#/components/requestBodies/NC'
+      responses:
+        '200':
+          description: 展開 NC。UTF-8、LF、先頭と末尾に % の行。
+          content:
+            text/plain:
+              schema:
+                type: string
+        '422':
+          description: NC のエラー。診断がある場合は diagnostics と warnings を含む。
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    properties:
+                      diagnostics:
+                        type: array
+                        items:
+                          $ref: './run-output.schema.json#/$defs/diagnostic'
+                      warnings:
+                        type: array
+                        items:
+                          $ref: './run-output.schema.json#/$defs/diagnostic'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '408':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/report:
+    post:
+      operationId: reportNc
+      requestBody:
+        $ref: '#/components/requestBodies/NC'
+      responses:
+        '200':
+          $ref: '#/components/responses/Report'
+        '422':
+          description: NC のエラー。解析できた範囲のレポートを含む。文字コードのエラーは message を返す。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: './run-output.schema.json#/$defs/report'
+                  - $ref: '#/components/schemas/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '408':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/health:
+    get:
+      operationId: health
+      responses:
+        '200':
+          description: 稼働中
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: ok
+  /v1/dialects:
+    get:
+      operationId: listDialects
+      responses:
+        '200':
+          description: 組み込み方言の設定一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                      enum: [fanuc, osp]
+components:
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+  requestBodies:
+    NC:
+      required: true
+      description: 本文は既定で最大 20,000,000 バイト。
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: 生の NC。charset がなければ UTF-8、次に CP932 を試す。
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [nc]
+            properties:
+              nc:
+                type: string
+              encoding:
+                type: string
+                enum: [auto, utf-8, utf8, cp932, shift_jis]
+                default: auto
+                description: 文字列へ変換する前の元 NC の文字コード。JSON 本文には UTF-8 を使用。
+              post:
+                type: string
+                description: ポスト設定の TOML または JSON 本文。JSON も文字列として渡す。
+              block_skip:
+                type: boolean
+                description: ブロックスキップのオン・オフ。番号一覧だけを指定するとオン。両方省略するとポストの設定を使用。
+              block_skip_levels:
+                type: array
+                description: 有効なブロックスキップ番号。空配列なら全番号を無効化。
+                items:
+                  type: integer
+                  minimum: 1
+                  maximum: 9
+              optional_stop:
+                type: boolean
+                description: M01 で実行を停止する。
+              set:
+                type: object
+                additionalProperties: true
+                example: {codes.rapid_feed: 5000, expand.block_skip: true}
+              include:
+                type: array
+                description: /v1/run で返す任意項目
+                items:
+                  type: string
+                  enum: [report, expanded, trace, path]
+                default: [report, expanded]
+  responses:
+    RunOutput:
+      description: NC 実行結果。警告も含む。
+      content:
+        application/json:
+          schema:
+            $ref: './run-output.schema.json'
+    Report:
+      description: NC レポート
+      content:
+        application/json:
+          schema:
+            $ref: './run-output.schema.json#/$defs/report'
+    Error:
+      description: リクエストの形式・設定・サイズのエラー、タイムアウト、または処理枠の上限。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

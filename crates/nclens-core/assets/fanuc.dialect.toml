@@ -1,0 +1,129 @@
+name = "fanuc"
+macro = "fanuc"
+
+[addresses]
+X = "X"
+Y = "Y"
+Z = "Z"
+A = "A"
+B = "B"
+C = "C"
+U = "U"
+V = "V"
+W = "W"
+I = "I"
+J = "J"
+K = "K"
+R = "R"
+F = "F"
+S = "S"
+T = "T"
+H = "H"
+D = "D"
+O = "O"
+N = "N"
+P = "P"
+L = "L"
+Q = "Q"
+G = "G"
+M = "M"
+
+[g_codes]
+"0" = { function = "rapid", group = 1, description = "早送り位置決め。各軸が早送りで終点へ移動" }
+"1" = { function = "linear", group = 1, description = "直線補間。F の送りで終点へ直線移動" }
+"2" = { function = "arc_cw", group = 1, description = "円弧補間（時計回り）。R または I・J・K で円弧を指定" }
+"3" = { function = "arc_ccw", group = 1, description = "円弧補間（反時計回り）。R または I・J・K で円弧を指定" }
+"4" = { function = "dwell", description = "ドウェル。P（ms）または X（秒）の時間だけ停止" }
+"10" = { function = "set_offsets", description = "データ設定。工具補正量・ワーク座標の値の書き換え" }
+"17" = { function = "plane_xy", group = 2, description = "XY 平面の選択（円弧・工具径補正の平面）" }
+"18" = { function = "plane_zx", group = 2, description = "ZX 平面の選択（円弧・工具径補正の平面）" }
+"19" = { function = "plane_yz", group = 2, description = "YZ 平面の選択（円弧・工具径補正の平面）" }
+"20" = { function = "inch", group = 6, description = "インチ入力" }
+"21" = { function = "millimeter", group = 6, description = "ミリ入力" }
+"28" = { function = "reference_return", description = "自動原点復帰。中間点を経由して第 1 原点へ" }
+"30" = { function = "secondary_reference_return", description = "第 2 原点復帰。中間点を経由して第 2〜4 原点へ" }
+"40" = { function = "radius_cancel", group = 7, description = "工具径補正のキャンセル" }
+"41" = { function = "radius_left", group = 7, description = "工具径補正（左）。D の補正量だけ進行方向の左へずらす" }
+"42" = { function = "radius_right", group = 7, description = "工具径補正（右）。D の補正量だけ進行方向の右へずらす" }
+"43" = { function = "length_positive", group = 8, description = "工具長補正（＋）。H の補正量を Z に加算" }
+"44" = { function = "length_negative", group = 8, description = "工具長補正（−）。H の補正量を Z から減算" }
+"49" = { function = "length_cancel", group = 8, description = "工具長補正のキャンセル" }
+"50" = { function = "spindle_limit", group = 11, description = "主軸の最高回転数の設定（S で上限）" }
+"51" = { function = "scaling", group = 11, description = "スケーリング。指定の中心と倍率で拡大・縮小" }
+"52" = { function = "local_coordinates", description = "ローカル座標系の設定" }
+"53" = { function = "machine_coordinates", description = "機械座標系での位置決め（そのブロックのみ）" }
+"54" = { function = "work_1", group = 12, description = "ワーク座標系 1 の選択" }
+"55" = { function = "work_2", group = 12, description = "ワーク座標系 2 の選択" }
+"56" = { function = "work_3", group = 12, description = "ワーク座標系 3 の選択" }
+"57" = { function = "work_4", group = 12, description = "ワーク座標系 4 の選択" }
+"58" = { function = "work_5", group = 12, description = "ワーク座標系 5 の選択" }
+"59" = { function = "work_6", group = 12, description = "ワーク座標系 6 の選択" }
+"61" = { function = "exact_stop", group = 13, description = "イグザクトストップ・モード。ブロックの終点で減速・停止" }
+"64" = { function = "continuous", group = 13, description = "連続切削モード" }
+"65" = { function = "macro_call", group = 14, description = "マクロの単純呼び出し。P のプログラムを引数付きで呼ぶ" }
+"66" = { function = "modal_call", group = 14, description = "マクロのモーダル呼び出し。移動のたびに P のプログラムを呼ぶ" }
+"67" = { function = "modal_cancel", group = 14, description = "マクロのモーダル呼び出しのキャンセル" }
+"68" = { function = "rotate", group = 16, description = "座標回転。中心と角度 R で回転" }
+"69" = { function = "rotate_cancel", group = 16, description = "座標回転のキャンセル" }
+"73" = { function = "cycle_high_speed_peck", group = 1, description = "高速深穴あけサイクル。Q ずつ切り込み、少し戻して切りくずを分断" }
+"80" = { function = "cycle_cancel", group = 1, description = "固定サイクルのキャンセル" }
+"81" = { function = "cycle_drill", group = 1, description = "ドリルサイクル。R 点から Z まで切削、早送りで戻る" }
+"82" = { function = "cycle_dwell", group = 1, description = "ドリルサイクル。穴底で P の時間だけドウェル" }
+"83" = { function = "cycle_peck", group = 1, description = "深穴あけサイクル。Q ずつ切り込み、R 点まで戻して切りくずを排出" }
+"84" = { function = "cycle_tap", group = 1, description = "タッピングサイクル。穴底で主軸を逆転して戻る" }
+"85" = { function = "cycle_bore", group = 1, description = "ボーリングサイクル。切削送りで戻る" }
+"86" = { function = "cycle_bore_stop", group = 1, description = "ボーリングサイクル。穴底で主軸停止、早送りで戻る" }
+"87" = { function = "cycle_back_bore", group = 1, description = "バックボーリングサイクル" }
+"88" = { function = "cycle_bore_manual", group = 1, description = "ボーリングサイクル。穴底でドウェル・主軸停止、手動で戻す" }
+"89" = { function = "cycle_bore_dwell", group = 1, description = "ボーリングサイクル。穴底でドウェル、切削送りで戻る" }
+"90" = { function = "absolute", group = 3, description = "アブソリュート指令。座標はワーク原点からの位置" }
+"91" = { function = "incremental", group = 3, description = "インクレメンタル指令。座標は今の位置からの移動量" }
+"93" = { function = "inverse_time", group = 5, description = "逆時間送り。F はブロックの所要時間（分）の逆数" }
+"94" = { function = "feed_per_minute", group = 5, description = "毎分送り（mm/min）" }
+"95" = { function = "feed_per_revolution", group = 5, description = "毎回転送り（mm/rev）" }
+"96" = { function = "constant_surface_speed", group = 17, description = "周速一定制御（S は m/min）" }
+"97" = { function = "constant_rpm", group = 17, description = "周速一定のキャンセル（S は回転数 min⁻¹）" }
+"98" = { function = "cycle_initial_return", group = 10, description = "固定サイクルのイニシャル点復帰" }
+"99" = { function = "cycle_r_return", group = 10, description = "固定サイクルの R 点復帰" }
+
+[m_codes]
+"0" = { function = "stop", description = "プログラムストップ。再開の操作まで停止" }
+"1" = { function = "optional_stop", description = "オプショナルストップ。スイッチ ON のときだけ停止" }
+"2" = { function = "end", description = "プログラム終了" }
+"3" = { function = "spindle_cw", description = "主軸正転（時計回り）" }
+"4" = { function = "spindle_ccw", description = "主軸逆転（反時計回り）" }
+"5" = { function = "spindle_stop", description = "主軸停止" }
+"6" = { function = "tool_change", description = "工具交換。T で選んだ工具へ交換" }
+"7" = { function = "coolant_mist", description = "ミストクーラント ON" }
+"8" = { function = "coolant_on", description = "クーラント ON" }
+"9" = { function = "coolant_off", description = "クーラント OFF" }
+"30" = { function = "rewind", description = "プログラム終了・先頭へ巻き戻し" }
+"98" = { function = "subprogram_call", description = "サブプログラム呼び出し。P の番号を L 回" }
+"99" = { function = "subprogram_return", description = "サブプログラム終了・呼び出し元へ戻る" }
+
+[address_descriptions]
+X = "X 軸の座標"
+Y = "Y 軸の座標"
+Z = "Z 軸の座標"
+A = "X 軸まわりの回転軸（度）"
+B = "Y 軸まわりの回転軸（度）"
+C = "Z 軸まわりの回転軸（度）"
+U = "X 軸に平行な付加軸"
+V = "Y 軸に平行な付加軸"
+W = "Z 軸に平行な付加軸"
+I = "円弧の中心の X 成分（始点から）"
+J = "円弧の中心の Y 成分（始点から）"
+K = "円弧の中心の Z 成分（始点から）。固定サイクルの繰り返し回数"
+R = "円弧の半径。固定サイクルの R 点"
+F = "送り速度"
+S = "主軸の回転数"
+T = "工具の番号"
+H = "工具長補正の番号"
+D = "工具径補正の番号"
+O = "プログラム番号"
+N = "シーケンス番号"
+P = "ドウェルの時間（ms）。呼び出すプログラムの番号"
+L = "繰り返し回数"
+Q = "深穴あけの 1 回の切り込み量"
+G = "準備機能（G コード）"
+M = "補助機能（M コード）"

@@ -1,0 +1,35 @@
+version = 1
+name = "FANUC Sample"
+comment = "サンプル用の工具とワーク原点"
+
+[dialect]
+name = "fanuc"
+
+[codes]
+rapid_mm_min = 6000.0
+integer_units = "millimeters"
+
+[variables]
+work = [
+    [12.0, 8.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0],
+]
+
+[variables.tools."1"]
+name = "エンドミル 4 mm"
+diameter_mm = 4.0
+
+[variables.tools."2"]
+name = "ドリル 5 mm"
+diameter_mm = 5.0
+
+[variables.tools."3"]
+name = "エンドミル 6 mm"
+diameter_mm = 6.0
+
+[variables.offsets."3"]
+d_geometry = 3.0

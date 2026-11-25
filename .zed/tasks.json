@@ -1,0 +1,45 @@
+// VS Code の .vscode/tasks.json と対
+[
+  {
+    "label": "Web 開発起動（vite、http://localhost:5174）",
+    "command": "pnpm",
+    "args": ["dev:web"],
+    "cwd": "$ZED_WORKTREE_ROOT/app"
+  },
+  {
+    "label": "GUI 開発起動（tauri dev）",
+    "command": "pnpm",
+    "args": ["tauri", "dev"],
+    "cwd": "$ZED_WORKTREE_ROOT/app"
+  },
+  {
+    "label": "GUI ビルド（debug、インストーラなし）",
+    "command": "pnpm",
+    "args": ["tauri", "build", "--debug", "--no-bundle"],
+    "cwd": "$ZED_WORKTREE_ROOT/app"
+  },
+  {
+    "label": "GUI インストーラのビルド（release、NSIS・MSI）",
+    "command": "pnpm",
+    "args": ["tauri", "build"],
+    "cwd": "$ZED_WORKTREE_ROOT/app"
+  },
+  {
+    "label": "外部連携ビルド（nclens-cli / nclens-server）",
+    "command": "cargo",
+    "args": ["build", "--locked", "-p", "nclens-cli", "-p", "nclens-server"],
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "ローカル API 起動（nclens-server）",
+    "command": "cargo",
+    "args": ["run", "--locked", "-p", "nclens-server"],
+    "cwd": "$ZED_WORKTREE_ROOT"
+  },
+  {
+    "label": "cargo test",
+    "command": "cargo",
+    "args": ["test", "--workspace", "--locked"],
+    "cwd": "$ZED_WORKTREE_ROOT"
+  }
+]

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>NC Lens</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/peek.css" />
+    <link rel="stylesheet" href="/src/mobile.css" />
+  </head>
+  <body>
+    <div id="app">
+      <nav id="menubar">
+        <button id="m-menu" class="m-only m-btn" aria-label="メニュー" aria-controls="msheet" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
+        <div class="menu">
+          <button class="menu-title">ファイル</button>
+          <div class="menu-items">
+            <button data-cmd="new">新規<kbd>Ctrl+N</kbd></button>
+            <button data-cmd="open">開く…<kbd>Ctrl+O</kbd></button>
+            <div class="menu-sub" id="sample-menu"><button class="sub-title">サンプルを開く<kbd>▸</kbd></button><div class="menu-items" id="sample-files"></div></div>
+            <button data-cmd="save">上書き保存<kbd>Ctrl+S</kbd></button>
+            <button data-cmd="saveAs">名前を付けて保存…<kbd>Ctrl+Shift+S</kbd></button>
+            <hr />
+            <button data-cmd="saveExpanded">展開結果を保存…</button>
+            <button data-cmd="report">レポート…<kbd>Ctrl+R</kbd></button>
+            <div class="menu-recent" id="recent-files"></div>
+          </div>
+        </div>
+        <div class="menu">
+          <button class="menu-title">設定</button>
+          <div class="menu-items">
+            <button data-cmd="postSettings">ポスト・コード定義…</button>
+            <button data-cmd="appSettings">アプリ設定…</button>
+            <div class="menu-recent" id="recent-posts"></div>
+          </div>
+        </div>
+        <div class="menu">
+          <button class="menu-title">ヘルプ</button>
+          <div class="menu-items">
+            <button data-cmd="help">ヘルプ…</button>
+            <button data-cmd="helpKeys">キー操作…</button>
+            <button data-cmd="helpLinks">リンク…</button>
+            <hr />
+            <button data-cmd="openWeb">Web 版を開く</button>
+            <button data-cmd="openDownload">最新版のダウンロード</button>
+            <hr />
+            <button data-cmd="about">NC Lens について…</button>
+          </div>
+        </div>
+        <span id="file-name">見本：bolt-circle-pocket.NCD</span>
+        <button class="m-only m-btn" data-cmd="open" aria-label="開く">開く</button>
+      </nav>
+      <div id="toolbar">
+        <span class="label">視点</span>
+        <div class="seg" id="views">
+          <button data-view="xy" title="XY 平面（上から）">XY</button>
+          <button data-view="yz" title="YZ 平面">YZ</button>
+          <button data-view="xz" title="XZ 平面">XZ</button>
+          <button data-view="3d" title="立体">3D</button>
+        </div>
+        <div class="seg" id="layout">
+          <button data-layout="single" title="1 画面（視点を選ぶ）">1 画面</button>
+          <button data-layout="quad" title="4 分割（XY・3D・XZ・YZ）。ビューのダブルクリックで最大化・復帰。境界のドラッグで大きさ、境界のダブルクリックで均等">4 分割</button>
+        </div>
+        <button data-cmd="fit" title="フィット：経路の全体を表示（Home）。中ボタンのダブルクリックでそのビューだけ">⛶ フィット</button>
+        <span class="sep"></span>
+        <div class="seg play" id="play">
+          <button data-cmd="first" title="先頭へ（Ctrl+←）">⏮</button>
+          <button data-cmd="stepBack" title="1 ブロック戻る（←）">⏪</button>
+          <button data-cmd="playBack" data-dir="-1" title="バック再生（Shift+←）">◀</button>
+          <button data-cmd="pause" title="一時停止（Space）">⏸</button>
+          <button data-cmd="play" data-dir="1" title="再生（Space・F5・Shift+→）">▶</button>
+          <button data-cmd="stepFwd" title="1 ブロック進む（→）">⏩</button>
+          <button data-cmd="last" title="末尾へ・全体を表示（Ctrl+→）">⏭</button>
+        </div>
+        <select id="speed" title="再生の速さ（加工時間に対する倍率）">
+          <option value="0.25">×0.25</option><option value="0.5">×0.5</option><option value="1">×1</option>
+          <option value="2">×2</option><option value="5">×5</option><option value="10" selected>×10</option>
+          <option value="20">×20</option><option value="50">×50</option><option value="100">×100</option><option value="200">×200</option>
+        </select>
+        <input type="range" id="seek" min="0" max="10000" value="10000" title="再生位置" />
+        <span id="play-time">0:00:00 / 0:00:00</span>
+        <div class="tb-pair">
+          <button class="tb-icon" data-switch="ghost" aria-label="完成形の表示"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 13.5L5.5 8l3.5 2.5"/><path d="M9 10.5L14.5 2.5" stroke-dasharray="1.6 1.6"/><circle cx="9" cy="10.5" r="1.4"/></svg></button>
+          <button class="tb-more" id="ghost-more" title="完成形の表示の設定（表示・薄さ・色）" aria-label="完成形の表示の設定" aria-haspopup="menu">▾</button>
+        </div>
+        <button class="tb-icon" data-switch="optionalStop" aria-label="オプショナルストップ（M01）"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.3 1.5h5.4l3.8 3.8v5.4l-3.8 3.8H5.3l-3.8-3.8V5.3z"/><path d="M6.6 6.2L8.4 4.8v6.7"/></svg></button>
+        <button class="tb-icon" data-switch="blockSkip" aria-label="ブロックスキップ（/）"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 14.5L10.5 6"/><path d="M1.8 7C3.6 2.4 10.6 1.4 14 5.6"/><path d="M14 5.6l-.1-3M14 5.6l-3 .2"/></svg></button>
+        <span class="spacer"></span>
+        <span id="run-state"></span>
+      </div>
+      <main id="workspace">
+        <section id="editor-pane">
+          <div class="pane-title">エディタ</div>
+          <div id="modal-panel">
+            <div class="mp-head">
+              <button class="mp-fold" title="折りたたむ・広げる">▾</button>
+              <b>モーダル</b>
+              <span id="mp-src"></span>
+              <span class="spacer"></span>
+              <button class="mp-pick" title="表示する項目">項目 ▾</button>
+              <button class="mp-close" title="パネルを隠す（設定 → アプリ設定 → 表示で戻す）">✕</button>
+              <div class="menu-items" id="mp-items"></div>
+            </div>
+            <div class="mp-body"></div>
+          </div>
+          <div id="break-status" aria-live="polite" title="クリック：ON／OFF。右クリック・⚙：設定"><button class="bs-sw" data-switch="optionalStop"></button><button class="bs-sw" data-switch="blockSkip"></button><button class="bs-gear" title="オプショナルストップ・ブロックスキップの設定" aria-label="設定">⚙</button></div>
+          <div id="editor"></div>
+        </section>
+        <div class="splitter" id="split-v"></div>
+        <section id="view-pane">
+          <div class="pane-title">描画<span id="view-name"></span><span class="spacer"></span><button id="peek-toggle" aria-controls="code-peek" title="使用コード" aria-label="使用コード"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5h8M5.5 8h8M5.5 12.5h8"/><circle cx="2.6" cy="3.5" r="1"/><circle cx="2.6" cy="8" r="1"/><circle cx="2.6" cy="12.5" r="1"/></svg></button></div>
+          <div id="viewer"><div id="legend"></div><div id="coord"></div></div>
+        </section>
+        <aside id="code-peek" hidden>
+          <div class="splitter" title="ドラッグで幅を変更"></div>
+          <div class="pane-title">
+            <strong>使用コード</strong>
+            <span class="spacer"></span>
+            <button data-offset="-1" title="前の出現（Alt+↑）" aria-label="前の出現" disabled>↑</button>
+            <button data-offset="1" title="次の出現（Alt+↓）" aria-label="次の出現" disabled>↓</button>
+          </div>
+          <div class="peek-body">
+            <div id="peek-rail" role="tablist" aria-orientation="vertical" aria-label="使用コードのグループ"></div>
+            <div id="peek-list" role="tabpanel"></div>
+            <div id="peek-tip" role="tooltip" hidden></div>
+          </div>
+        </aside>
+      </main>
+      <div class="splitter h" id="split-h"></div>
+      <section id="bottom">
+        <div id="tabs">
+          <button data-tab="expanded" class="active">展開結果 <span class="count" id="n-expanded">0</span></button>
+          <button data-tab="vars">変数の追跡 <span class="count" id="n-vars">0</span></button>
+          <button data-tab="errors">エラー <span class="count" id="n-errors">0</span></button>
+          <span class="spacer"></span>
+          <span class="tab-tools" id="expanded-tools">
+            <button data-cmd="copySel" title="選択した行の展開後をコピー（Ctrl+C）">選択行をコピー</button>
+            <button data-cmd="copyAll" title="展開後をすべてコピー">すべてコピー</button>
+          </span>
+        </div>
+        <div id="tab-body">
+          <div class="tab-page active" id="tab-expanded"></div>
+          <div class="tab-page" id="tab-vars"></div>
+          <div class="tab-page" id="tab-errors"></div>
+        </div>
+      </section>
+      <dialog id="set-dialog" class="pdialog">
+        <header>
+          <b>ポスト・コード定義</b>
+          <span id="set-file" class="pfile"></span>
+          <span class="spacer"></span>
+          <span class="pnote">1 セット＝ポスト＋方言（コード定義）</span>
+        </header>
+        <div class="smain">
+          <aside class="dlist">
+            <div class="dlist-items" id="set-list"></div>
+            <div class="dlist-btns">
+              <button class="pbtn" data-sact="add">追加</button>
+              <button class="pbtn" data-sact="dup">複製</button>
+              <button class="pbtn" data-sact="rename">名前の変更</button>
+              <button class="pbtn" data-sact="del">削除</button>
+              <button class="pbtn" data-sact="default">既定にする</button>
+              <button class="pbtn" data-sact="import" title="ポスト設定のファイルの読み込み（一覧へ追加）">読み込み…</button>
+              <button class="pbtn" data-sact="export" title="選択中のセットのポスト設定のファイルへの書き出し（以後このファイルと関連付け）">書き出し…</button>
+            </div>
+          </aside>
+          <nav class="spages" id="set-pages"></nav>
+          <div class="dright">
+            <div id="set-name" class="pgrid"></div>
+            <div class="pbody" id="set-body"></div>
+          </div>
+        </div>
+        <footer>
+          <span id="set-errors"></span>
+          <span class="spacer"></span>
+          <button class="pbtn primary" data-sact="apply">保存して反映</button>
+          <button class="pbtn" data-sact="cancel">キャンセル</button>
+        </footer>
+      </dialog>
+      <dialog id="report-dialog" class="pdialog">
+        <header>
+          <b>レポート</b>
+          <span id="report-file" class="pfile"></span>
+          <span class="spacer"></span>
+          <button class="pbtn" data-ract="save">JSON 保存…</button>
+          <button class="pbtn" data-ract="copy">コピー</button>
+        </header>
+        <div class="pbody" id="report-body"></div>
+        <footer><span id="report-state"></span><span class="spacer"></span><span class="pnote">更新：開く・編集・設定の変更ごと</span></footer>
+      </dialog>
+      <dialog id="app-settings" class="pdialog">
+        <header>
+          <b>アプリ設定</b>
+          <span class="pnote">変更：即時反映・自動保存</span>
+          <span class="spacer"></span>
+        </header>
+        <div class="amain">
+          <nav class="spages" id="app-pages"></nav>
+          <div class="pbody" id="app-body"></div>
+        </div>
+      </dialog>
+      <dialog id="help-dialog" class="pdialog">
+        <header><b>ヘルプ</b><span class="spacer"></span></header>
+        <div class="amain">
+          <nav class="spages" id="help-pages"></nav>
+          <div class="pbody" id="help-body"></div>
+        </div>
+      </dialog>
+      <div id="ctx" class="menu-items">
+        <button data-cmd="copySel">選択行をコピー<kbd>Ctrl+C</kbd></button>
+        <button data-cmd="copyAll">すべてコピー</button>
+        <hr />
+        <button data-cmd="saveExpanded">展開結果を保存…</button>
+      </div>
+      <div id="ghost-menu" class="menu-items" role="menu">
+        <button class="check" data-switch="ghost">完成形の表示</button>
+        <hr />
+        <label class="menu-row">薄さ<input type="range" id="ghost-fade" min="0" max="0.85" step="0.05" /><output id="ghost-fade-v"></output></label>
+        <label class="menu-row">色<input type="color" id="ghost-color" /><button class="pbtn" id="ghost-color-reset" title="テーマの既定の色に戻す">既定</button></label>
+      </div>
+      <div id="view-ctx" class="menu-items">
+        <button class="check" data-switch="optionalStop">オプショナルストップ（M01）</button>
+        <button class="check" data-switch="blockSkip">ブロックスキップ（/）</button>
+      </div>
+      <footer id="statusbar">
+        <span>切削 <b id="st-cut">0.000</b> mm</span>
+        <span>早送り <b id="st-rapid">0.000</b> mm</span>
+        <span>時間 <b id="st-time">0:00:00</b></span>
+        <span>範囲 <b id="st-range">—</b></span>
+        <span class="spacer"></span>
+        <span id="st-zoom"></span>
+        <span id="st-play"></span>
+        <span id="st-post" title="使用中のポスト"></span>
+        <span id="st-enc"></span>
+        <span id="st-segs">線分 0</span>
+        <span id="st-cursor">行 1</span>
+      </footer>
+      <!-- スマホ（Web 版）：下部のパネルのタブ・メニューのシート（mobile.ts・mobile.css）。デスクトップでは出さない -->
+      <nav id="mtabs" role="tablist" aria-label="表示する領域">
+        <button role="tab" data-mtab="nc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 19h4"/></svg>NC</button>
+        <button role="tab" data-mtab="out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h10"/></svg>展開結果</button>
+        <button role="tab" data-mtab="code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg>使用コード・集計</button>
+        <button role="tab" data-mtab="modal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="13" y="4" width="8" height="6" rx="1"/><rect x="3" y="14" width="8" height="6" rx="1"/><rect x="13" y="14" width="8" height="6" rx="1"/></svg>モーダル</button>
+        <button role="tab" data-mtab="vars"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l7 10M10 7L3 17"/><path d="M14 10h7M14 14h7"/></svg>変数の追跡</button>
+      </nav>
+      <div id="msheet" role="dialog" aria-modal="true" aria-label="メニュー">
+        <header><button class="ms-back" aria-label="閉じる">‹ 戻る</button><b>メニュー</b></header>
+        <div class="ms-body">
+          <section class="ms-sec"><h3>再生と表示</h3><div id="ms-tools"></div></section>
+          <section class="ms-sec" id="ms-menus"></section>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

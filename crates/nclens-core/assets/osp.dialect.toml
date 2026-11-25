@@ -1,0 +1,59 @@
+# Initial OSP milling profile. See DIALECTS.md for the tested scope.
+name = "osp"
+base = "fanuc"
+macro = "osp"
+
+[g_codes]
+"4" = { function = "dwell_feed", description = "ドウェル。F の秒数だけ停止" }
+"10" = { function = "unsupported", description = "OSP では未対応" }
+"15" = { function = "work_select_h", group = 4, description = "ワーク座標系の選択。H の番号（H1〜H6）" }
+"16" = { function = "unsupported", description = "OSP では未対応" }
+"17" = { function = "plane_xy", group = 5, description = "XY 平面の選択（円弧・工具径補正の平面）" }
+"18" = { function = "plane_zx", group = 5, description = "ZX 平面の選択（円弧・工具径補正の平面）" }
+"19" = { function = "plane_yz", group = 5, description = "YZ 平面の選択（円弧・工具径補正の平面）" }
+"28" = { function = "unsupported", description = "OSP では未対応" }
+"30" = { function = "reference_return", description = "原点復帰" }
+"43" = { function = "unsupported", description = "OSP では未対応" }
+"44" = { function = "unsupported", description = "OSP では未対応" }
+"49" = { function = "unsupported", description = "OSP では未対応" }
+"50" = { function = "unsupported", description = "OSP では未対応" }
+"51" = { function = "unsupported", description = "OSP では未対応" }
+"52" = { function = "unsupported", description = "OSP では未対応" }
+"53" = { function = "length_cancel", group = 10, description = "工具長補正のキャンセル" }
+"54" = { function = "unsupported", description = "OSP では未対応" }
+"55" = { function = "unsupported", description = "OSP では未対応" }
+"56" = { function = "length_positive", group = 10, description = "工具長補正。H の補正量を Z に加算" }
+"57" = { function = "unsupported", description = "OSP では未対応" }
+"58" = { function = "unsupported", description = "OSP では未対応" }
+"59" = { function = "unsupported", description = "OSP では未対応" }
+"61" = { function = "exact_stop", group = 14, description = "イグザクトストップ・モード。ブロックの終点で減速・停止" }
+"64" = { function = "continuous", group = 14, description = "連続切削モード" }
+"65" = { function = "unsupported", description = "OSP では未対応" }
+"66" = { function = "unsupported", description = "OSP では未対応" }
+"67" = { function = "unsupported", description = "OSP では未対応" }
+"68" = { function = "unsupported", description = "OSP では未対応" }
+"69" = { function = "unsupported", description = "OSP では未対応" }
+"71" = { function = "unsupported", description = "OSP では未対応" }
+"73" = { function = "unsupported", description = "OSP では未対応" }
+"81" = { function = "unsupported", description = "OSP では未対応" }
+"82" = { function = "unsupported", description = "OSP では未対応" }
+"83" = { function = "unsupported", description = "OSP では未対応" }
+"84" = { function = "unsupported", description = "OSP では未対応" }
+"85" = { function = "unsupported", description = "OSP では未対応" }
+"86" = { function = "unsupported", description = "OSP では未対応" }
+"87" = { function = "unsupported", description = "OSP では未対応" }
+"88" = { function = "unsupported", description = "OSP では未対応" }
+"89" = { function = "unsupported", description = "OSP では未対応" }
+"90" = { function = "absolute", group = 12, description = "アブソリュート指令。座標はワーク原点からの位置" }
+"91" = { function = "incremental", group = 12, description = "インクレメンタル指令。座標は今の位置からの移動量" }
+"93" = { function = "inverse_time", group = 13, description = "逆時間送り。F はブロックの所要時間（分）の逆数" }
+"94" = { function = "feed_per_minute", group = 13, description = "毎分送り（mm/min）" }
+"95" = { function = "feed_per_revolution", group = 13, description = "毎回転送り（mm/rev）" }
+"96" = { function = "unsupported", description = "OSP では未対応" }
+"97" = { function = "unsupported", description = "OSP では未対応" }
+"98" = { function = "unsupported", description = "OSP では未対応" }
+"99" = { function = "unsupported", description = "OSP では未対応" }
+
+[m_codes]
+"98" = { function = "ignore", description = "OSP では無視（サブプログラムは CALL・RTS）" }
+"99" = { function = "ignore", description = "OSP では無視（サブプログラムは CALL・RTS）" }

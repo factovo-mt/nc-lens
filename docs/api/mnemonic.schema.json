@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NC Lens mnemonic settings",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "base": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "fanuc",
+        "osp",
+        null
+      ]
+    },
+    "macro": {
+      "$ref": "#/$defs/macro"
+    },
+    "addresses": {
+      "type": "object"
+    },
+    "g_codes": {
+      "type": "object"
+    },
+    "m_codes": {
+      "type": "object"
+    },
+    "custom": {
+      "type": "object"
+    },
+    "address_descriptions": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "macro": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "syntax": {
+          "type": "string",
+          "enum": [
+            "fanuc",
+            "osp"
+          ]
+        },
+        "expression": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "assignment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "block_skip": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comment_pair": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "type": "array",
+              "maxItems": 0
+            }
+          ]
+        },
+        "line_comments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/variable"
+          }
+        },
+        "operators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operator"
+          }
+        },
+        "comparisons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/comparison"
+          }
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/control"
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/function"
+          }
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prefix",
+        "kind"
+      ],
+      "properties": {
+        "prefix": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "empty",
+            "local",
+            "common",
+            "retained",
+            "system"
+          ]
+        },
+        "range": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "description": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "default": 0,
+          "description": "番号に加える格納先のオフセット。"
+        }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "operation",
+        "precedence"
+      ],
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "add",
+            "sub",
+            "mul",
+            "div",
+            "mod",
+            "and",
+            "or",
+            "xor"
+          ]
+        },
+        "precedence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 254
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "operation",
+        "precedence"
+      ],
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge"
+          ]
+        },
+        "precedence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 254
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keyword",
+        "statement"
+      ],
+      "properties": {
+        "keyword": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "enum": [
+            "if",
+            "then",
+            "goto",
+            "while",
+            "do",
+            "end",
+            "call",
+            "rts",
+            "modin",
+            "modout"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "function",
+        "arity"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "function": {
+          "type": "string",
+          "enum": [
+            "sin",
+            "cos",
+            "tan",
+            "asin",
+            "acos",
+            "atan",
+            "sqrt",
+            "abs",
+            "round",
+            "fix",
+            "fup",
+            "ln",
+            "exp",
+            "pow",
+            "bin",
+            "bcd",
+            "adp"
+          ]
+        },
+        "arity": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "angle_unit": {
+          "type": "string",
+          "enum": [
+            "degrees",
+            "radians"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -26,8 +26,10 @@ pub fn dialect_to_string(settings: &DialectSettings) -> Result<String, PostError
 
 /// Parse and validate a post from JSON.
 pub fn post_from_json(src: &str) -> Result<PostProfile, PostError> {
-    let profile = parse_json(src)?;
-    validate_post(&profile)?;
+    let profile: PostProfile = parse_json(src)?;
+    if let Err(field) = profile.validate() {
+        return Err(json_setting_error(src, &field));
+    }
     Ok(profile)
 }
 
@@ -40,7 +42,9 @@ pub fn post_to_json(profile: &PostProfile) -> Result<String, PostError> {
 /// Parse and validate a dialect from JSON.
 pub fn dialect_from_json(src: &str) -> Result<DialectSettings, PostError> {
     let settings = parse_json(src)?;
-    validate_dialect(&settings)?;
+    if let Some(field) = dialect::invalid_fields(&settings).into_iter().next() {
+        return Err(json_setting_error(src, &field));
+    }
     Ok(settings)
 }
 
@@ -55,6 +59,20 @@ fn parse_json<T: serde::de::DeserializeOwned>(src: &str) -> Result<T, PostError>
         line: Some(error.line()),
         message: error.to_string(),
     })
+}
+
+fn json_setting_error(src: &str, field: &[&str]) -> PostError {
+    let line = field.iter().rev().find_map(|key| {
+        let quoted = serde_json::to_string(key).ok()?;
+        src.lines().position(|line| {
+            line.match_indices(&quoted)
+                .any(|(offset, _)| line[offset + quoted.len()..].trim_start().starts_with(':'))
+        })
+    });
+    PostError {
+        line: Some(line.map_or(1, |line| line + 1)),
+        message: format!("Invalid setting {}", field.join(".")),
+    }
 }
 
 fn validate_post(profile: &PostProfile) -> Result<(), PostError> {

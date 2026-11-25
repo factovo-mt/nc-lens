@@ -1,9 +1,9 @@
-// ポスト・コード定義の画面：セット（ポスト＝方言を含む）の一覧、ページの一覧、ページの中身の 3 列。
+// ポスト・コード定義の画面：セット（ポスト＝ニーモニック・固有を含む）の一覧、ページの一覧、ページの中身の 3 列。
 // 1 セット＝1 ポスト（TOML・JSON）。一覧は nclens.settings.json に残し、ファイルに結び付いたセットは保存のときにファイルへも書く。
-// ページの中身は post.ts（コード設定・変数設定・展開出力）と dialect.ts（アドレス表〜マクロ構文）。
+// ページの中身は post.ts（コード設定・変数設定・展開出力）と dialect.ts（アドレス表〜マクロ記号）。
 import { invoke, isDesktop, message, open, save } from "./platform";
 import { SETTINGS_FILTERS, CHECKS, TABLES, field, rowHtml, renderPost, collectPost } from "./post";
-import { DIALECT_TABS, ROWS, builtinDialects, renderDialect, collectDialect, explain } from "./dialect";
+import { DIALECT_TABS, ROWS, MACRO_ROWS, builtinDialects, renderDialect, collectDialect, explain, markMacroErrors, refreshSymbols } from "./dialect";
 import type { PostSet } from "./settings";
 import { FloatWin } from "./floatwin";
 import type { DialectSettings, PostProfile } from "./types";
@@ -13,10 +13,10 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const baseName = (p: string) => p.split(/[\\/]/).pop() ?? p;
 const TITLE = "ポスト・コード定義";
 
-/** ページ：ポストの 3 つとコード定義の 5 つ */
+/** ページ：ポストの 3 つとコード定義の 6 つ */
 const PAGES: [string, string][] = [
   ["codes", "コード設定"], ["vars", "変数設定"], ["expand", "展開出力"],
-  ["addr", "アドレス表"], ["g", "G コード表"], ["m", "M コード表"], ["custom", "ユーザー定義"], ["macro", "マクロ構文"],
+  ["addr", "アドレス表"], ["g", "G コード表"], ["m", "M コード表"], ["custom", "ユーザー定義"], ["macro", "マクロ構文"], ["sym", "マクロ記号"],
 ];
 
 export interface SetState { sets: PostSet[]; current: string }
@@ -49,7 +49,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
   };
   const list = () => {
     $("#set-list").innerHTML = st.sets
-      .map((s, i) => `<button data-sel="${i}" class="${i === sel ? "active" : ""}" title="${esc(s.path ?? "")}">${esc(s.profile.name)}${s.profile.name === st.current ? "<em>既定</em>" : ""}<small>${esc(s.path ? baseName(s.path) : s.profile.dialect.name)}</small></button>`)
+      .map((s, i) => `<button data-sel="${i}" class="${i === sel ? "active" : ""}" title="${esc(s.path ?? "")}">${esc(s.profile.name)}${s.profile.name === st.current ? "<em>既定</em>" : ""}<small>${esc(s.path ? baseName(s.path) : s.profile.mnemonic.name)}</small></button>`)
       .join("");
   };
   const setPage = (p: string) => {
@@ -61,7 +61,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
   const fill = () => {
     const p = cur().profile;
     $("#set-name").innerHTML = field("セットの名前", "post.name", p.name, "text") + field("説明", "post.comment", p.comment, "free");
-    const html: Record<string, string> = { ...renderPost(p), ...renderDialect(p.dialect) };
+    const html: Record<string, string> = { ...renderPost(p), ...renderDialect(p.mnemonic) };
     body.innerHTML = PAGES.map(([k]) => `<div class="ppage" data-page="${k}">${html[k]}</div>`).join("");
     setPage(page);
     showFile();
@@ -71,7 +71,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
     const s = cur();
     const root = dlg.querySelector<HTMLElement>(".smain")!;
     const post = collectPost(root, s.profile);
-    const dia = collectDialect(s.profile.dialect, body);
+    const dia = collectDialect(s.profile.mnemonic, body);
     const errors = [...post.errors, ...dia.errors];
     const name = post.profile.name.trim();
     const nameEl = $("#set-name").querySelector<HTMLInputElement>('[data-k="post.name"]')!;
@@ -79,7 +79,11 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
       nameEl.classList.add("bad");
       errors.push("セットの名前：重複");
     }
-    if (!errors.length) errors.push(...(await invoke<string[]>("dialect_validate", { dialect: dia.dialect })).map(explain));
+    if (!errors.length) {
+      const core = await invoke<string[]>("dialect_validate", { dialect: dia.dialect });
+      await markMacroErrors(dia.dialect, core, body);
+      errors.push(...core.map(explain));
+    }
     if (errors.length) {
       showErrors(errors);
       const bad = dlg.querySelector<HTMLElement>("input.bad");
@@ -88,7 +92,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
       bad?.focus();
       return errors;
     }
-    const profile: PostProfile = { ...post.profile, name, dialect: dia.dialect };
+    const profile: PostProfile = { ...post.profile, name, mnemonic: dia.dialect };
     if (JSON.stringify(profile) !== JSON.stringify(s.profile)) {
       if (st.current === s.profile.name) st.current = name;
       s.profile = profile;
@@ -125,7 +129,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         if ((await sync()).length) return;
         const profile = await invoke<PostProfile>("post_default");
         profile.name = "新しいセット";
-        profile.dialect = (await builtinDialects())[0] ?? profile.dialect;
+        profile.mnemonic = (await builtinDialects())[0] ?? profile.mnemonic;
         await addSet({ profile, path: null });
       },
       async dup() {
@@ -188,9 +192,9 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
       },
       async apply() {
         if ((await sync()).length) return;
-        // 全部のセットの方言をコアで検査
+        // 全部のセットのニーモニック・固有をコアで検査
         for (const [i, s] of st.sets.entries()) {
-          const errs = await invoke<string[]>("dialect_validate", { dialect: s.profile.dialect });
+          const errs = await invoke<string[]>("dialect_validate", { dialect: s.profile.mnemonic });
           if (errs.length) {
             sel = i;
             list();
@@ -220,16 +224,16 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         finish(null);
       },
     };
-    /** 方言だけの読み込み・書き出し（TOML・JSON） */
+    /** ニーモニック・固有だけの読み込み・書き出し（TOML・JSON） */
     const dialectFile = async (kind: string) => {
       if ((await sync()).length) return;
       const s = cur();
       if (kind === "export") {
-        const path = await save({ defaultPath: `${s.profile.dialect.name}.dialect.toml`, filters: SETTINGS_FILTERS });
+        const path = await save({ defaultPath: `${s.profile.mnemonic.name}.dialect.toml`, filters: SETTINGS_FILTERS });
         if (!path) return;
         try {
-          await invoke("dialect_save", { path, dialect: s.profile.dialect });
-          showErrors([], `方言の書き出し完了：${path}`);
+          await invoke("dialect_save", { path, dialect: s.profile.mnemonic });
+          showErrors([], `ニーモニック・固有の書き出し完了：${path}`);
         } catch (e) {
           await message(`書き出し失敗：${e}`, { title: TITLE, kind: "error" });
         }
@@ -238,12 +242,12 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
       const path = await open({ multiple: false, filters: SETTINGS_FILTERS });
       if (!path) return;
       try {
-        s.profile.dialect = await invoke<DialectSettings>("dialect_load", { path });
+        s.profile.mnemonic = await invoke<DialectSettings>("dialect_load", { path });
         changed.add(s);
         fill();
-        showErrors([], `方言の読み込み完了：${typeof path === "string" ? path : path.name}`);
+        showErrors([], `ニーモニック・固有の読み込み完了：${typeof path === "string" ? path : path.name}`);
       } catch (e) {
-        await message(`方言の読み込み失敗：${e}`, { title: TITLE, kind: "error" });
+        await message(`ニーモニック・固有の読み込み失敗：${e}`, { title: TITLE, kind: "error" });
       }
     };
     const onClick = async (e: MouseEvent) => {
@@ -271,6 +275,19 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         tbody.querySelector<HTMLInputElement>("tr:last-child input")?.focus();
         return markChanged();
       }
+      const mAdd = t.closest<HTMLElement>("[data-maddrow]")?.dataset.maddrow as keyof typeof MACRO_ROWS | undefined;
+      if (mAdd) {
+        const tbody = body.querySelector(`[data-mtable="${mAdd}"] tbody`)!;
+        tbody.insertAdjacentHTML("beforeend", MACRO_ROWS[mAdd]());
+        tbody.querySelector<HTMLInputElement>("tr:last-child input")?.focus();
+        return markChanged();
+      }
+      const mAct = t.closest<HTMLElement>("[data-mact]")?.dataset.mact;
+      if (mAct === "check") return void sync();
+      if (mAct === "reset") {
+        refreshSymbols(cur().profile.mnemonic, body, true);
+        return markChanged();
+      }
       if (t.closest(".pdel")) {
         t.closest("tr")!.remove();
         markChanged();
@@ -294,6 +311,8 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
         const d = el.closest(".pdup")?.querySelector(".pdesc");
         if (d) d.textContent = el.selectedOptions[0]?.dataset.desc ?? "";
       }
+      // 構文・基底を変えたら、マクロ記号のページを新しい基底の値で作り直す
+      if (e.type === "change" && (el.name === "dmacro" || el.hasAttribute("data-base"))) refreshSymbols(cur().profile.mnemonic, body);
       markChanged();
     };
     const finish = (r: SetState | null) => {
@@ -309,7 +328,7 @@ export async function openSetDialog(start: SetState, page = "codes"): Promise<Se
     dlg.addEventListener("change", onInput);
     $("#set-pages").innerHTML =
       `<div class="spage-group">ポスト</div>${PAGES.slice(0, 3).map(([k, t]) => `<button data-spage="${k}">${t}</button>`).join("")}` +
-      `<div class="spage-group">コード定義（方言）</div>${PAGES.slice(3).map(([k, t]) => `<button data-spage="${k}">${t}</button>`).join("")}`;
+      `<div class="spage-group">コード定義（ニーモニック・固有）</div>${PAGES.slice(3).map(([k, t]) => `<button data-spage="${k}">${t}</button>`).join("")}`;
     list();
     fill();
     showErrors([]);

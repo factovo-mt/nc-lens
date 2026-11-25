@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use crate::{BlockSkipUsage, Diagnostic, MacroSyntax, RunResult};
+pub(crate) use crate::Op;
+use crate::{
+    AngleUnit, BlockSkipUsage, Control, Diagnostic, Function, MacroGrammar, MacroSyntax, RunResult,
+};
 #[path = "osp.rs"]
 pub(crate) mod osp;
-pub(crate) use osp::{COMMON_BASE as OSP_COMMON_BASE, LOCAL_BASE as OSP_LOCAL_BASE};
+pub(crate) use osp::LOCAL_BASE as OSP_LOCAL_BASE;
 
 pub type Error = String;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -11,27 +14,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Expr {
     Number(f64),
     Var(Box<Expr>),
+    VariableIndex(String, Box<Expr>),
     Negative(Box<Expr>),
     Binary(Op, Box<Expr>, Box<Expr>),
-    Function(String, Box<Expr>, Option<Box<Expr>>),
-}
-
-#[derive(Clone, Copy)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    Eq,
-    Ne,
-    Lt,
-    Le,
-    Gt,
-    Ge,
-    And,
-    Or,
-    Xor,
+    Function(Function, AngleUnit, Box<Expr>, Option<Box<Expr>>),
 }
 
 pub struct Word {
@@ -76,12 +62,18 @@ pub struct Program {
     open: Vec<(usize, u32)>,
 }
 
-struct Cursor<'a>(&'a str);
+struct Cursor<'a, 'g>(&'a str, &'g MacroGrammar, Option<&'g mut osp::Names>);
 
-impl Cursor<'_> {
+impl Cursor<'_, '_> {
+    fn advance(&mut self, count: usize) {
+        self.0 = &self.0[count..];
+        if self.2.is_some() {
+            self.0 = self.0.trim_start();
+        }
+    }
     fn take(&mut self, s: &str) -> bool {
-        if let Some(rest) = self.0.strip_prefix(s) {
-            self.0 = rest;
+        if !s.is_empty() && self.0.starts_with(s) {
+            self.advance(s.len());
             true
         } else {
             false
@@ -108,7 +100,7 @@ impl Cursor<'_> {
             .ok()
             .filter(|v| v.is_finite())
             .ok_or_else(|| format!("Invalid number before {:?}", self.0))?;
-        self.0 = &self.0[end..];
+        self.advance(end);
         Ok((value, raw.contains('.')))
     }
 
@@ -120,146 +112,219 @@ impl Cursor<'_> {
         Ok(n as u32)
     }
 
+    fn require_char(&mut self, ch: char) -> Result<()> {
+        self.require(ch.encode_utf8(&mut [0; 4]))
+    }
+
     fn group(&mut self, depth: usize) -> Result<Expr> {
-        self.require("[")?;
+        let [open, close] = self.1.expression;
+        self.require_char(open)?;
         let expr = self.expr(0, depth)?;
-        self.require("]")?;
+        self.require_char(close)?;
         Ok(expr)
+    }
+
+    fn sign(&mut self) -> Option<Op> {
+        let rule = self.1.operator(self.0)?;
+        if matches!(rule.operation, Op::Add | Op::Sub) {
+            self.advance(rule.symbol.len());
+            Some(rule.operation)
+        } else {
+            None
+        }
+    }
+
+    fn variable_prefix(&self) -> Option<&str> {
+        self.1
+            .variables
+            .iter()
+            .filter(|rule| {
+                rule.range.is_some() && !rule.prefix.is_empty() && self.0.starts_with(&rule.prefix)
+            })
+            .map(|rule| rule.prefix.as_str())
+            .max_by_key(|prefix| prefix.len())
+    }
+
+    fn variable_index(&mut self, depth: usize) -> Result<Expr> {
+        let prefix = self
+            .variable_prefix()
+            .ok_or("Expected variable prefix")?
+            .to_owned();
+        self.advance(prefix.len());
+        let index = if self.0.starts_with(self.1.expression[0]) {
+            self.group(depth)?
+        } else if self.variable_prefix().is_some() {
+            self.atom(depth)?
+        } else {
+            Expr::Number(self.number()?.0)
+        };
+        Ok(Expr::VariableIndex(prefix, Box::new(index)))
     }
 
     fn atom(&mut self, depth: usize) -> Result<Expr> {
         if depth >= 64 {
             return Err("Expression nesting limit".into());
         }
-        if self.take("+") {
-            return self.atom(depth + 1);
-        }
-        if self.take("-") {
-            return Ok(Expr::Negative(Box::new(self.atom(depth + 1)?)));
-        }
-        if self.take("#") {
-            let index = if self.0.starts_with('[') {
-                self.group(depth + 1)?
-            } else if self.0.starts_with('#') {
-                self.atom(depth + 1)?
+        if let Some(sign) = self.sign() {
+            let value = self.atom(depth + 1)?;
+            return Ok(if sign == Op::Sub {
+                Expr::Negative(Box::new(value))
             } else {
-                Expr::Number(self.number()?.0)
-            };
-            return Ok(Expr::Var(Box::new(index)));
+                value
+            });
         }
-        if self.0.starts_with('[') {
+        if self.0.starts_with(self.1.expression[0]) {
             return self.group(depth + 1);
         }
         if self.0.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
             return Ok(Expr::Number(self.number()?.0));
         }
-        for name in [
-            "ASIN", "ACOS", "ATAN", "SQRT", "ROUND", "SIN", "COS", "TAN", "ABS", "FIX", "FUP",
-            "LN", "EXP", "BIN", "BCD", "ADP",
-        ] {
-            if self.take(name) {
-                self.require("[")?;
-                let a = self.expr(0, depth + 1)?;
-                let second = if name == "ATAN" && self.take(",") {
-                    let b = self.expr(0, depth + 1)?;
-                    self.require("]")?;
-                    Some(b)
+        let [open, close] = self.1.arguments;
+        let function = self
+            .1
+            .functions
+            .iter()
+            .filter(|rule| {
+                self.0
+                    .strip_prefix(&rule.name)
+                    .is_some_and(|rest| rest.trim_start().starts_with(open))
+            })
+            .max_by_key(|rule| rule.name.len());
+        if let Some(rule) = function {
+            self.advance(rule.name.len());
+            self.require_char(open)?;
+            let first = self.expr(0, depth + 1)?;
+            let second = if self.take(",") {
+                let second = self.expr(0, depth + 1)?;
+                self.require_char(close)?;
+                Some(second)
+            } else {
+                self.require_char(close)?;
+                let split_atan = rule.function == Function::Atan
+                    && rule.arity[1] == 2
+                    && self.1.operator(self.0).is_some_and(|op| {
+                        op.operation == Op::Div
+                            && self.0[op.symbol.len()..].trim_start().starts_with(open)
+                    });
+                if split_atan {
+                    self.advance(self.1.operator(self.0).unwrap().symbol.len());
+                    self.require_char(open)?;
+                    let second = self.expr(0, depth + 1)?;
+                    self.require_char(close)?;
+                    Some(second)
                 } else {
-                    self.require("]")?;
-                    if name == "ATAN" && self.take("/[") {
-                        let b = self.expr(0, depth + 1)?;
-                        self.require("]")?;
-                        Some(b)
-                    } else {
-                        None
-                    }
-                };
-                return Ok(Expr::Function(
-                    name.into(),
-                    Box::new(a),
-                    second.map(Box::new),
-                ));
+                    None
+                }
+            };
+            let count = if second.is_some() { 2 } else { 1 };
+            if !(rule.arity[0]..=rule.arity[1]).contains(&count) {
+                return Err(format!("Invalid argument count for {}", rule.name));
+            }
+            return Ok(Expr::Function(
+                rule.function,
+                rule.angle_unit,
+                Box::new(first),
+                second.map(Box::new),
+            ));
+        }
+        if self
+            .variable_prefix()
+            .is_some_and(|prefix| !prefix.as_bytes()[0].is_ascii_alphabetic())
+            || (self.2.is_none() && self.variable_prefix().is_some())
+        {
+            return Ok(Expr::Var(Box::new(self.variable_index(depth + 1)?)));
+        }
+        if let Some(names) = self.2.as_mut() {
+            let end = self
+                .0
+                .bytes()
+                .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+                .count();
+            if end != 0 {
+                let id = names.variable(&self.0[..end], self.1)?;
+                self.advance(end);
+                return Ok(Expr::Var(Box::new(Expr::Number(f64::from(id)))));
             }
         }
         Err(format!("Expected expression before {:?}", self.0))
     }
 
-    fn expr(&mut self, min: u8, depth: usize) -> Result<Expr> {
+    fn expr(&mut self, min: u16, depth: usize) -> Result<Expr> {
         let mut lhs = self.atom(depth)?;
         for _ in 0..256 {
-            let operators = [
-                ("OR", Op::Or, 1),
-                ("XOR", Op::Xor, 1),
-                ("AND", Op::And, 2),
-                ("EQ", Op::Eq, 3),
-                ("NE", Op::Ne, 3),
-                ("LE", Op::Le, 3),
-                ("LT", Op::Lt, 3),
-                ("GE", Op::Ge, 3),
-                ("GT", Op::Gt, 3),
-                ("+", Op::Add, 4),
-                ("-", Op::Sub, 4),
-                ("*", Op::Mul, 5),
-                ("/", Op::Div, 5),
-                ("MOD", Op::Mod, 5),
-            ];
-            let op = operators
-                .into_iter()
-                .find(|(s, _, prec)| *prec >= min && self.0.starts_with(s));
-            let Some((s, op, prec)) = op else {
+            let Some(rule) = self.1.operator(self.0) else {
                 return Ok(lhs);
             };
-            self.take(s);
+            let prec = u16::from(rule.precedence);
+            if prec < min {
+                return Ok(lhs);
+            }
+            self.advance(rule.symbol.len());
             let rhs = self.expr(prec + 1, depth + 1)?;
-            lhs = Expr::Binary(op, Box::new(lhs), Box::new(rhs));
+            lhs = Expr::Binary(rule.operation, Box::new(lhs), Box::new(rhs));
         }
         Err("Expression length limit".into())
     }
 
+    fn control(&mut self, statement: Control) -> bool {
+        let rule = self
+            .1
+            .controls
+            .iter()
+            .filter(|rule| self.0.starts_with(&rule.keyword))
+            .max_by_key(|rule| rule.keyword.len());
+        rule.is_some_and(|rule| rule.statement == statement && self.take(&rule.keyword))
+    }
+
     fn body(&mut self) -> Result<Body> {
-        if self.take("IF") {
+        if self.control(Control::If) {
             let cond = self.group(0)?;
-            let branch = if self.take("GOTO") {
+            let branch = if self.control(Control::Goto) {
                 Body::Goto(self.expr(0, 0)?)
             } else {
-                self.require("THEN")?;
+                if !self.control(Control::Then) {
+                    return Err(format!("Expected THEN before {:?}", self.0));
+                }
                 self.assign()?
             };
             return Ok(Body::If(cond, Box::new(branch)));
         }
-        if self.take("GOTO") {
+        if self.control(Control::Goto) {
             return Ok(Body::Goto(self.expr(0, 0)?));
         }
-        if self.take("WHILE") {
+        if self.control(Control::While) {
             let cond = self.group(0)?;
-            self.require("DO")?;
+            if !self.control(Control::Do) {
+                return Err(format!("Expected DO before {:?}", self.0));
+            }
             return Ok(Body::While(cond, self.integer()?));
         }
-        if self.take("END") {
+        if self.control(Control::End) {
             return Ok(Body::End(self.integer()?));
         }
-        if self.0.starts_with('#') {
+        if self.variable_prefix().is_some() {
             return self.assign();
         }
         let mut words = Vec::new();
         while let Some(addr) = self.0.bytes().next() {
-            if addr == b'/' {
+            if self.0.starts_with(&self.1.block_skip) {
                 break;
             }
             if !addr.is_ascii_uppercase() {
                 return Err(format!("Expected address before {:?}", self.0));
             }
             self.0 = &self.0[1..];
-            let unsigned = self.0.trim_start_matches(['+', '-']);
+            let original = self.0;
+            let sign = self.sign();
             let (value, literal_point) =
-                if unsigned.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
-                    let negative = self.take("-");
-                    if !negative {
-                        self.take("+");
-                    }
+                if self.0.starts_with(|c: char| c.is_ascii_digit() || c == '.') {
                     let (n, point) = self.number()?;
-                    (Expr::Number(if negative { -n } else { n }), Some(point))
+                    (
+                        Expr::Number(if sign == Some(Op::Sub) { -n } else { n }),
+                        Some(point),
+                    )
                 } else {
+                    self.0 = original;
                     (self.atom(0)?, None)
                 };
             words.push(Word {
@@ -272,29 +337,62 @@ impl Cursor<'_> {
     }
 
     fn assign(&mut self) -> Result<Body> {
-        self.require("#")?;
-        let index = self.atom(0)?;
-        self.require("=")?;
+        let prefix = self
+            .variable_prefix()
+            .ok_or("Expected variable prefix")?
+            .to_owned();
+        self.advance(prefix.len());
+        let index = Expr::VariableIndex(prefix, Box::new(self.atom(0)?));
+        self.require(&self.1.assignment)?;
         Ok(Body::Assign(index, self.expr(0, 0)?))
     }
 }
 
-fn strip(raw: &str, preserve_space: bool) -> Result<String> {
+fn strip(
+    mut raw: &str,
+    preserve_space: bool,
+    grammar: &MacroGrammar,
+) -> Result<(String, Option<String>)> {
     let mut depth = 0usize;
     let mut text = String::new();
-    for c in raw.chars() {
-        match c {
-            '(' => depth += 1,
-            ')' if depth != 0 => depth -= 1,
-            ';' if depth == 0 => break,
-            _ if depth == 0 && (preserve_space || !c.is_whitespace()) && c != '\u{feff}' => {
-                text.push(c.to_ascii_uppercase())
+    let mut comment = None;
+    let mut comment_start = "";
+    while let Some(c) = raw.chars().next() {
+        let rest = &raw[c.len_utf8()..];
+        match *grammar.comment_pair.as_slice() {
+            [open, _] if c == open => {
+                if depth == 0 {
+                    comment_start = rest;
+                }
+                depth += 1;
+            }
+            [_, close] if c == close && depth != 0 => {
+                depth -= 1;
+                if depth == 0 && comment.is_none() {
+                    comment = Some(
+                        comment_start[..comment_start.len() - raw.len()]
+                            .trim()
+                            .to_owned(),
+                    );
+                }
+            }
+            _ if depth != 0 => {}
+            _ if grammar.line_comments.iter().any(|symbol| {
+                raw.get(..symbol.len())
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(symbol))
+            }) =>
+            {
+                break
+            }
+            _ if (preserve_space || !c.is_whitespace()) && c != '\u{feff}' => {
+                text.push(c.to_ascii_uppercase());
             }
             _ => {}
         }
+        raw = rest;
     }
     if depth == 0 {
-        Ok(text)
+        Ok((text, comment))
     } else {
         Err("Unclosed comment".into())
     }
@@ -304,20 +402,20 @@ pub fn parse(
     src: &str,
     program_address: char,
     sequence_address: char,
-    macro_syntax: &MacroSyntax,
+    grammar: &MacroGrammar,
     output: &mut RunResult,
 ) -> Vec<Program> {
     let mut programs = vec![Program::default()];
-    let osp = *macro_syntax == MacroSyntax::Osp;
+    let osp = grammar.syntax == MacroSyntax::Osp;
     let mut names = osp::Names::default();
     let mut skip_counts = [0; 9];
     let normalized = src.replace("\r\n", "\n");
     for (i, raw) in normalized.split(['\n', '\r']).enumerate() {
         let line = i + 1;
         let result = (|| {
-            let clean = strip(raw, osp)?;
+            let (clean, comment) = strip(raw, osp, grammar)?;
             let clean = clean.trim();
-            let mut cursor = Cursor(clean);
+            let mut cursor = Cursor(clean, grammar, None);
             if clean.is_empty() || clean == "%" {
                 return Ok(());
             }
@@ -331,7 +429,7 @@ pub fn parse(
             let header_text = if osp {
                 clean
             } else {
-                clean.split('/').next().unwrap()
+                clean.split(&grammar.block_skip).next().unwrap()
             };
             let header = header_text.strip_prefix(program_address).filter(|suffix| {
                 if osp {
@@ -379,7 +477,7 @@ pub fn parse(
                 return Ok(());
             }
             let mut skip = 0;
-            while cursor.take("/") {
+            while cursor.take(&grammar.block_skip) {
                 let level = match cursor.0.as_bytes().first() {
                     Some(b'1'..=b'9')
                         if !cursor.0.as_bytes().get(1).is_some_and(u8::is_ascii_digit) =>
@@ -389,10 +487,16 @@ pub fn parse(
                         level
                     }
                     Some(b'0'..=b'9') => {
-                        return Err("Invalid block skip level (expected /1 through /9)".into())
+                        return Err(format!(
+                            "Invalid block skip level (expected {marker}1 through {marker}9)",
+                            marker = grammar.block_skip
+                        ));
                     }
-                    _ if skip != 0 || cursor.0.trim_start().starts_with('/') => {
-                        return Err("Use /1 explicitly when combining block skip levels".into());
+                    _ if skip != 0 || cursor.0.trim_start().starts_with(&grammar.block_skip) => {
+                        return Err(format!(
+                            "Use {}1 explicitly when combining block skip levels",
+                            grammar.block_skip
+                        ));
                     }
                     _ => 1,
                 };
@@ -417,10 +521,10 @@ pub fn parse(
                 None
             };
             let body = if osp {
-                names.body(cursor.0, program_address, sequence_address)?
+                names.body(cursor.0, program_address, sequence_address, grammar)?
             } else {
                 let body = cursor.body()?;
-                if cursor.0.starts_with('/') {
+                if cursor.0.starts_with(&grammar.block_skip) {
                     warn_trailing_skip();
                 } else if !cursor.0.is_empty() {
                     return Err(format!("Unexpected text {:?}", cursor.0));
@@ -450,13 +554,7 @@ pub fn parse(
                 Body::End(_) => Some("END without matching DO"),
                 _ => None,
             };
-            let comment = if matches!(body, Body::Assign(..) | Body::If(..)) {
-                raw.split_once('(')
-                    .and_then(|(_, tail)| tail.split_once(')'))
-                    .map(|(comment, _)| comment.trim().to_owned())
-            } else {
-                None
-            };
+            let comment = comment.filter(|_| matches!(body, Body::Assign(..) | Body::If(..)));
             p.blocks.push(Block {
                 line,
                 skip,
@@ -493,12 +591,12 @@ pub fn parse(
     programs
 }
 
-pub(crate) fn parse_replacement(src: &str) -> Result<Vec<Word>> {
-    let clean = strip(src, false)?;
+pub(crate) fn parse_replacement(src: &str, grammar: &MacroGrammar) -> Result<Vec<Word>> {
+    let (clean, _) = strip(src, false, grammar)?;
     if src.contains(['\r', '\n']) {
         return Err("Replacement must be a single block".into());
     }
-    let mut cursor = Cursor(&clean);
+    let mut cursor = Cursor(&clean, grammar, None);
     match cursor.body()? {
         Body::Words(words) if cursor.0.is_empty() => Ok(words),
         _ => Err("Replacement must be an NC word list".into()),

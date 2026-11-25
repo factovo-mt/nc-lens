@@ -13,7 +13,9 @@ use nclens_cli::{
     decode, execute, execute_trace, expanded_nc, parse_set, read_settings, resolve_files,
     run_output, status, wants_trace, Config, Encoding, Error, Include, DEFAULT_INCLUDE,
 };
-use nclens_core::{make_report, post_to_json, post_to_string, PostProfile, DEFAULT_POST_TOML};
+use nclens_core::{
+    macro_reference, make_report, post_to_json, post_to_string, PostProfile, DEFAULT_POST_TOML,
+};
 use serde_json::{json, Value};
 
 const USAGE: &str = "\
@@ -22,7 +24,8 @@ usage: nclens-cli <run|expand|report|trace> <NC|-> [--out FILE] [--encoding auto
        nclens-cli watch DIR --out-dir DIR
        nclens-cli post <init|check> FILE | nclens-cli post show [--format toml|json]
        nclens-cli settings <init|check|show> [FILE]
-options: --post FILE --dialect fanuc|osp|FILE --settings FILE --set KEY=VALUE
+       nclens-cli macro-reference [--mnemonic fanuc|osp|FILE]
+options: --post FILE --mnemonic fanuc|osp|FILE --settings FILE --set KEY=VALUE
          --include report,expanded,trace,path (run) --json (report/post show)
          --map FILE (expand) --watch #n,#n (trace) --block-skip --block-skip-levels 1,3,5 --optional-stop
          --error-format text|json";
@@ -36,6 +39,7 @@ enum Action {
     Watch,
     Post,
     Settings,
+    MacroReference,
 }
 
 #[derive(Default)]
@@ -85,6 +89,7 @@ fn command(args: &[OsString]) -> Result<u8, Error> {
         Some("watch") => Action::Watch,
         Some("post") => Action::Post,
         Some("settings") => Action::Settings,
+        Some("macro-reference") => Action::MacroReference,
         _ => return Err(bad_args()),
     };
     let (subcommand, rest) = if matches!(action, Action::Post | Action::Settings) {
@@ -93,6 +98,19 @@ fn command(args: &[OsString]) -> Result<u8, Error> {
     } else {
         (None, rest)
     };
+    if action == Action::MacroReference {
+        let selection = match rest {
+            [] => None,
+            [flag, path] if flag == "--mnemonic" => Some(Path::new(path)),
+            _ => return Err(bad_args()),
+        };
+        let config = resolve_files(None, selection, None, [])?;
+        write_json(
+            &mut io::stdout().lock(),
+            &macro_reference(&config.post.dialect),
+        )?;
+        return Ok(0);
+    }
     let options = parse(action, rest)?;
     if options.out.is_some() && options.out == options.map {
         return Err(Error::config("--out and --map require different files"));
@@ -246,7 +264,7 @@ fn parse(action: Action, args: &[OsString]) -> Result<Options, Error> {
             Some("--post") if options.post.is_none() && action != Action::Settings => {
                 options.post = Some(value.into())
             }
-            Some("--dialect") if options.dialect.is_none() && action != Action::Settings => {
+            Some("--mnemonic") if options.dialect.is_none() && action != Action::Settings => {
                 options.dialect = Some(value.into())
             }
             Some("--settings") if options.settings.is_none() => {

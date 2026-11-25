@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::{MacroGrammar, MacroSettings};
+
 pub const FANUC_DIALECT_TOML: &str = include_str!("../assets/fanuc.dialect.toml");
 pub const OSP_DIALECT_TOML: &str = include_str!("../assets/osp.dialect.toml");
 
@@ -20,8 +22,8 @@ pub struct DialectSettings {
     /// Select the built-in dialect to inherit. Without a base, the name selects a
     /// matching built-in dialect and other names inherit FANUC.
     pub base: Option<String>,
-    #[serde(rename = "macro", skip_serializing_if = "Option::is_none")]
-    pub macro_syntax: Option<MacroSyntax>,
+    #[serde(rename = "macro", skip_serializing_if = "macro_settings_empty")]
+    pub macro_settings: MacroSettings,
     /// Source letter to canonical address role.
     #[serde(serialize_with = "serialize_addresses")]
     pub addresses: BTreeMap<char, AddressRole>,
@@ -32,6 +34,12 @@ pub struct DialectSettings {
     /// Address letter to a short explanation shown in the GUI tooltip.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub address_descriptions: BTreeMap<String, String>,
+}
+
+pub type MnemonicSettings = DialectSettings;
+
+fn macro_settings_empty(settings: &MacroSettings) -> bool {
+    *settings == MacroSettings::default()
 }
 
 fn serialize_addresses<S: serde::Serializer>(
@@ -51,7 +59,7 @@ impl Default for DialectSettings {
         Self {
             name: "fanuc".into(),
             base: None,
-            macro_syntax: None,
+            macro_settings: MacroSettings::default(),
             addresses: BTreeMap::new(),
             g_codes: BTreeMap::new(),
             m_codes: BTreeMap::new(),
@@ -143,6 +151,19 @@ fn builtins() -> &'static [DialectSettings; 2] {
     })
 }
 
+pub(crate) fn macro_grammar(settings: &DialectSettings) -> MacroGrammar {
+    let [fanuc, osp] = builtins();
+    let use_osp = settings.macro_settings.syntax.as_ref().map_or_else(
+        || settings.base.as_deref().unwrap_or(&settings.name) == "osp",
+        |syntax| *syntax == MacroSyntax::Osp,
+    );
+    MacroGrammar::resolve(
+        &fanuc.macro_settings,
+        use_osp.then_some(&osp.macro_settings),
+        &settings.macro_settings,
+    )
+}
+
 pub fn builtin_dialects() -> Vec<DialectSettings> {
     builtins().to_vec()
 }
@@ -175,6 +196,10 @@ fn numeric_key(key: &str) -> Option<f64> {
 
 pub(crate) fn invalid_fields(settings: &DialectSettings) -> Vec<Vec<&str>> {
     let mut problems = Vec::new();
+    let grammar = macro_grammar(settings);
+    if let Some(field) = grammar.invalid_field() {
+        problems.push(vec!["macro", field]);
+    }
     if settings.name.trim().is_empty() {
         problems.push(vec!["name"]);
     }
@@ -222,7 +247,7 @@ pub(crate) fn invalid_fields(settings: &DialectSettings) -> Vec<Vec<&str>> {
     seen.clear();
     for (key, def) in &settings.custom {
         if !custom_key(key).is_some_and(|(letter, value)| seen.insert(format!("{letter}{value}")))
-            || matches!(def, CustomCode::Replace(text) if !syntax::parse_replacement(text).is_ok_and(|words| !words.is_empty()))
+            || matches!(def, CustomCode::Replace(text) if !syntax::parse_replacement(text, &grammar).is_ok_and(|words| !words.is_empty()))
         {
             problems.push(vec!["custom", key]);
         }
@@ -277,7 +302,7 @@ pub(crate) enum Action {
 }
 
 pub(crate) struct Dialect {
-    pub macro_syntax: MacroSyntax,
+    pub macro_grammar: MacroGrammar,
     pub program_address: char,
     pub sequence_address: char,
     addresses: BTreeMap<char, AddressRole>,
@@ -295,13 +320,9 @@ impl Dialect {
         let mut m = fanuc.m_codes.clone();
         let mut custom = BTreeMap::new();
         let use_osp = settings.base.as_deref().unwrap_or(&settings.name) == "osp";
-        let mut macro_syntax = MacroSyntax::Fanuc;
         let mut program_address = post.codes.program_address;
         let mut sequence_address = 'N';
         for layer in use_osp.then_some(osp).into_iter().chain([settings]) {
-            if let Some(value) = &layer.macro_syntax {
-                macro_syntax = value.clone();
-            }
             for (&letter, &role) in &layer.addresses {
                 if role == AddressRole::O && letter != 'O' {
                     program_address = letter;
@@ -350,7 +371,7 @@ impl Dialect {
             })
             .collect();
         Self {
-            macro_syntax,
+            macro_grammar: macro_grammar(settings),
             program_address,
             sequence_address,
             addresses,

@@ -187,3 +187,9 @@ pub fn format_dialect_json(src: &str) -> Result<String, JsError> {
     nclens_core::dialect_to_json(&nclens_core::dialect_from_json(src).map_err(js_error)?)
         .map_err(js_error)
 }
+
+#[wasm_bindgen]
+pub fn macro_reference(mnemonic: &str) -> Result<String, JsError> {
+    let settings = nclens_core::dialect_from_json(mnemonic).map_err(js_error)?;
+    json(&nclens_core::macro_reference(&settings))
+}

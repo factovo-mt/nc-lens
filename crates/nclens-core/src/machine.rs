@@ -69,7 +69,7 @@ pub struct Machine<'a> {
 }
 
 impl<'a> Machine<'a> {
-    pub fn new(post: &'a PostProfile, src: &str) -> Self {
+    pub fn new(post: &'a PostProfile, src: &str, grammar: &crate::MacroGrammar) -> Self {
         let modal = [
             (4001, 0.),
             (4002, 17.),
@@ -105,7 +105,7 @@ impl<'a> Machine<'a> {
             block_end: [0.; 3],
             length: 0.,
             dynamic_length: None,
-            tools: Catalog::new(post, src),
+            tools: Catalog::new(post, src, &grammar.comment_pair),
             cutter_comp: CutterComp::new(post.codes.measure_compensated_path),
             measure_compensated_path: post.codes.measure_compensated_path,
             selected_tool: 0,

@@ -281,7 +281,7 @@ fn post_show_exports_settings_reusable_by_cli() {
     fs::write(&dialect, r#"{"name":"test"}"#).unwrap();
     for format in ["toml", "json"] {
         let output = cli()
-            .args(["post", "show", "--format", format, "--dialect"])
+            .args(["post", "show", "--format", format, "--mnemonic"])
             .arg(&dialect)
             .output()
             .unwrap();

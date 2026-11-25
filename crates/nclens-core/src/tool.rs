@@ -60,7 +60,7 @@ pub(crate) struct Catalog<'a> {
 }
 
 impl<'a> Catalog<'a> {
-    pub(crate) fn new(post: &'a crate::PostProfile, src: &str) -> Self {
+    pub(crate) fn new(post: &'a crate::PostProfile, src: &str, comment_pair: &[char]) -> Self {
         Self {
             post: post
                 .variables
@@ -73,8 +73,11 @@ impl<'a> Catalog<'a> {
                 .split(['\n', '\r'])
                 .enumerate()
                 .filter_map(|(i, raw)| {
-                    let (before, rest) = raw.split_once('(')?;
-                    let (comment, after) = rest.split_once(')')?;
+                    let &[open, close] = comment_pair else {
+                        return None;
+                    };
+                    let (before, rest) = raw.split_once(open)?;
+                    let (comment, after) = rest.split_once(close)?;
                     let standalone = before.trim().is_empty() && after.trim().is_empty();
                     Some((i + 1, (comment.trim().to_owned(), standalone)))
                 })

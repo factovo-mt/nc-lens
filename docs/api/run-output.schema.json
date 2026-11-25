@@ -201,7 +201,7 @@
       "properties": {
         "filename": {"type":"string"},
         "generated_at_unix_seconds": {"type":"integer","minimum":0},
-        "dialect": {"type":"string"},
+        "mnemonic": {"type":"string"},
         "post_name": {"type":"string"},
         "totals": {"$ref":"#/$defs/totals"},
         "feed_min": {"type":["number","null"]},
@@ -212,7 +212,7 @@
         "errors": {"type":"integer","minimum":0},
         "warnings": {"type":"integer","minimum":0}
       },
-      "required": ["filename","generated_at_unix_seconds","dialect","post_name","totals","feed_min","feed_max","bounds","tools","programs","errors","warnings"]
+      "required": ["filename","generated_at_unix_seconds","mnemonic","post_name","totals","feed_min","feed_max","bounds","tools","programs","errors","warnings"]
     }
   }
 }

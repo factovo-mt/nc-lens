@@ -196,6 +196,8 @@ async function invokeWeb(command: string, args: Record<string, unknown>) {
     }
     case "dialect_validate":
       return JSON.parse(core.validate_dialect(JSON.stringify(args.dialect)));
+    case "macro_reference":
+      return JSON.parse(core.macro_reference(JSON.stringify(args.mnemonic)));
     default:
       throw new Error(`未対応の操作：${command}`);
   }

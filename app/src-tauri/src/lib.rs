@@ -4,7 +4,7 @@ mod samples;
 mod settings;
 mod startup;
 
-use nclens_core::{DialectSettings, PostProfile, Report, RunResult};
+use nclens_core::{DialectSettings, MacroReference, PostProfile, Report, RunResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -68,28 +68,34 @@ fn post_save(path: String, post: PostProfile) -> Result<(), String> {
     nclens_core::save_post(&path, &post).map_err(|e| e.to_string())
 }
 
-/// 組み込みの方言（FANUC・OSP）。
+/// 組み込みのニーモニック・固有（FANUC・OSP）。
 #[tauri::command]
 fn dialect_builtin() -> Vec<DialectSettings> {
     nclens_core::builtin_dialects()
 }
 
-/// 方言（TOML・JSON）を読む。
+/// ニーモニック・固有（TOML・JSON）を読む。
 #[tauri::command]
 fn dialect_load(path: String) -> Result<DialectSettings, String> {
     nclens_core::load_dialect(&path).map_err(|e| e.to_string())
 }
 
-/// 方言を書く（拡張子 .toml・.json で形式を選ぶ。コア側で中身を検査してから書く）。
+/// ニーモニック・固有を書く（拡張子 .toml・.json で形式を選ぶ。コア側で中身を検査してから書く）。
 #[tauri::command]
 fn dialect_save(path: String, dialect: DialectSettings) -> Result<(), String> {
     nclens_core::save_dialect(&path, &dialect).map_err(|e| e.to_string())
 }
 
-/// 方言の誤り（空なら正しい）。
+/// ニーモニック・固有の誤り（空なら正しい）。
 #[tauri::command]
 fn dialect_validate(dialect: DialectSettings) -> Vec<String> {
     nclens_core::validate_dialect(&dialect)
+}
+
+/// ニーモニック・固有のマクロ記号の一覧（ヘルプの表）。
+#[tauri::command]
+fn macro_reference(mnemonic: DialectSettings) -> MacroReference {
+    nclens_core::macro_reference(&mnemonic)
 }
 
 /// 読んだファイルの中身と文字コード（"utf-8" か "cp932"）。保存のときに同じ文字コードで書き戻す。
@@ -284,6 +290,7 @@ pub fn run() {
             dialect_load,
             dialect_save,
             dialect_validate,
+            macro_reference,
             startup,
             settings_load,
             settings_save,

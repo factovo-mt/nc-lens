@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: NC Lens Local API
-  version: 1.0.0
+  version: 0.2.5
 servers:
   - url: http://127.0.0.1:8765
 paths:
@@ -117,23 +117,42 @@ paths:
                 properties:
                   status:
                     const: ok
-  /v1/dialects:
+  /v1/mnemonics:
     get:
-      operationId: listDialects
+      operationId: listMnemonics
       responses:
         '200':
-          description: 組み込み方言の設定一覧
+          description: 組み込みのニーモニック・固有の定義一覧
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-                  required: [name]
-                  properties:
-                    name:
-                      type: string
-                      enum: [fanuc, osp]
+                  $ref: './mnemonic.schema.json'
+  /v1/macro-reference:
+    post:
+      operationId: macroReference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './mnemonic.schema.json'
+      responses:
+        '200':
+          description: ニーモニック・固有の定義から作ったマクロ記号一覧
+          content:
+            application/json:
+              schema:
+                $ref: './macro-reference.schema.json'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '408':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
 components:
   schemas:
     Error:
@@ -166,7 +185,7 @@ components:
                 description: 文字列へ変換する前の元 NC の文字コード。JSON 本文には UTF-8 を使用。
               post:
                 type: string
-                description: ポスト設定の TOML または JSON 本文。JSON も文字列として渡す。
+                description: ポスト設定の TOML または JSON 本文。JSON も文字列として渡す。ニーモニック・固有の定義は mnemonic に指定する。
               block_skip:
                 type: boolean
                 description: ブロックスキップのオン・オフ。番号一覧だけを指定するとオン。両方省略するとポストの設定を使用。

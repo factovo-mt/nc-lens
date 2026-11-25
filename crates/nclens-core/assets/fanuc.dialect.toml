@@ -1,5 +1,4 @@
 name = "fanuc"
-macro = "fanuc"
 
 [addresses]
 X = "X"
@@ -127,3 +126,64 @@ L = "繰り返し回数"
 Q = "深穴あけの 1 回の切り込み量"
 G = "準備機能（G コード）"
 M = "補助機能（M コード）"
+
+[macro]
+syntax = "fanuc"
+expression = ["[", "]"]
+arguments = ["[", "]"]
+assignment = "="
+block_skip = "/"
+comment_pair = ["(", ")"]
+line_comments = [";"]
+variables = [
+  { prefix = "#", kind = "empty", range = [0, 0], description = "空値" },
+  { prefix = "#", kind = "local", range = [1, 33], description = "呼び出しごとのローカル変数" },
+  { prefix = "#", kind = "common", range = [100, 199], description = "共通変数" },
+  { prefix = "#", kind = "retained", range = [500, 999], description = "保持用の共通変数" },
+  { prefix = "#", kind = "system", range = [1000, 99999], description = "対応する機械状態、タイマー、アラームなど" },
+]
+operators = [
+  { symbol = "+", operation = "add", precedence = 4, description = "加算" },
+  { symbol = "-", operation = "sub", precedence = 4, description = "減算" },
+  { symbol = "*", operation = "mul", precedence = 5, description = "乗算" },
+  { symbol = "/", operation = "div", precedence = 5, description = "除算" },
+  { symbol = "MOD", operation = "mod", precedence = 5, description = "剰余" },
+  { symbol = "AND", operation = "and", precedence = 2, description = "ビット単位の論理積" },
+  { symbol = "OR", operation = "or", precedence = 1, description = "ビット単位の論理和" },
+  { symbol = "XOR", operation = "xor", precedence = 1, description = "ビット単位の排他的論理和" },
+]
+comparisons = [
+  { symbol = "EQ", operation = "eq", precedence = 3, description = "等しい" },
+  { symbol = "NE", operation = "ne", precedence = 3, description = "等しくない" },
+  { symbol = "GT", operation = "gt", precedence = 3, description = "より大きい" },
+  { symbol = "LT", operation = "lt", precedence = 3, description = "より小さい" },
+  { symbol = "GE", operation = "ge", precedence = 3, description = "以上" },
+  { symbol = "LE", operation = "le", precedence = 3, description = "以下" },
+]
+controls = [
+  { keyword = "IF", statement = "if", description = "条件分岐" },
+  { keyword = "THEN", statement = "then", description = "条件成立時に代入" },
+  { keyword = "GOTO", statement = "goto", description = "指定したシーケンスに移動" },
+  { keyword = "WHILE", statement = "while", description = "条件付きループを開始" },
+  { keyword = "DO", statement = "do", description = "ループ番号を指定" },
+  { keyword = "END", statement = "end", description = "指定したループを閉じる" },
+]
+functions = [
+  { name = "SIN", function = "sin", arity = [1, 1], angle_unit = "degrees", description = "正弦" },
+  { name = "COS", function = "cos", arity = [1, 1], angle_unit = "degrees", description = "余弦" },
+  { name = "TAN", function = "tan", arity = [1, 1], angle_unit = "degrees", description = "正接" },
+  { name = "ASIN", function = "asin", arity = [1, 1], angle_unit = "degrees", description = "逆正弦" },
+  { name = "ACOS", function = "acos", arity = [1, 1], angle_unit = "degrees", description = "逆余弦" },
+  { name = "ATAN", function = "atan", arity = [1, 2], angle_unit = "degrees", description = "逆正接" },
+  { name = "SQRT", function = "sqrt", arity = [1, 1], angle_unit = "degrees", description = "平方根" },
+  { name = "ABS", function = "abs", arity = [1, 1], angle_unit = "degrees", description = "絶対値" },
+  { name = "ROUND", function = "round", arity = [1, 1], angle_unit = "degrees", description = "四捨五入" },
+  { name = "FIX", function = "fix", arity = [1, 1], angle_unit = "degrees", description = "ゼロ方向への丸め" },
+  { name = "FUP", function = "fup", arity = [1, 1], angle_unit = "degrees", description = "ゼロから遠ざかる方向への丸め" },
+  { name = "LN", function = "ln", arity = [1, 1], angle_unit = "degrees", description = "自然対数" },
+  { name = "EXP", function = "exp", arity = [1, 1], angle_unit = "degrees", description = "自然指数" },
+  { name = "POW", function = "pow", arity = [2, 2], angle_unit = "degrees", description = "累乗" },
+  { name = "BIN", function = "bin", arity = [1, 1], angle_unit = "degrees", description = "BCD から整数に変換" },
+  { name = "BCD", function = "bcd", arity = [1, 1], angle_unit = "degrees", description = "整数から BCD に変換" },
+  { name = "ADP", function = "adp", arity = [1, 1], angle_unit = "degrees", description = "小数点を省略した引数を変換" },
+]

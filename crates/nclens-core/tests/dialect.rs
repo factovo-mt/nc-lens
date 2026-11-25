@@ -204,3 +204,161 @@ fn report_counts_parse_errors_and_cutting_blocks_without_a_time_estimate() {
     assert_eq!(report.totals.cut_length_mm, 2.);
     assert_eq!(report.totals.cut_time_sec, 1.);
 }
+
+#[test]
+fn macro_symbols_change_without_changing_the_expansion() {
+    use nclens_core::{dialect_from_str, macro_reference, AngleUnit, Op};
+
+    let mut standard = PostProfile::default();
+    standard.codes.integer_units = IntegerUnits::Millimeters;
+    standard
+        .dialect
+        .custom
+        .insert("G200".into(), CustomCode::Replace("G1X#1".into()));
+    let expected = run_with(
+        "O1\n#1=SIN[30]+2*3\nIF[#1GE6]THEN#1=POW[2,3]\nG200 F100\n/1G1X[9-2]\nM30\n",
+        &standard,
+    );
+    let mut altered = standard.clone();
+    altered.dialect = dialect_from_str(
+        r#"
+name = "custom"
+[macro]
+expression = ["(", ")"]
+arguments = ["{", "}"]
+comment_pair = ["[", "]"]
+line_comments = ["!"]
+assignment = ":="
+block_skip = "?"
+comparisons = [{ symbol = ">=", operation = "ge", precedence = 3 }]
+controls = [{ keyword = "WHEN", statement = "if" }, { keyword = "SET", statement = "then" }]
+variables = [{ prefix = "@", kind = "local", range = [1, 33] }]
+functions = [
+  { name = "SINE", function = "sin", arity = [1, 1], angle_unit = "radians" },
+  { name = "POWER", function = "pow", arity = [2, 2] },
+]
+[custom]
+G200 = { replace = "G1X@1" }
+"#,
+    )
+    .unwrap();
+    let mut operators = builtin_dialects()
+        .remove(0)
+        .macro_settings
+        .operators
+        .unwrap();
+    operators
+        .iter_mut()
+        .find(|rule| rule.operation == Op::Add)
+        .unwrap()
+        .symbol = "~".into();
+    altered.dialect.macro_settings.operators = Some(operators);
+    assert!(validate_dialect(&altered.dialect).is_empty());
+    let actual = run_with(
+        "O1\n@1:=SINE{0.5235987755982988}~2*3\nWHEN(@1>=6)SET@1:=POWER{2,3}\nG200 F100\n?1G1X(9-2)\nM30 !end\n",
+        &altered,
+    );
+    assert!(
+        expected.diagnostics.is_empty(),
+        "{:?}",
+        expected.diagnostics
+    );
+    assert!(actual.diagnostics.is_empty(), "{:?}", actual.diagnostics);
+    assert_eq!(
+        actual
+            .expanded
+            .iter()
+            .map(|line| &line.text)
+            .collect::<Vec<_>>(),
+        expected
+            .expanded
+            .iter()
+            .map(|line| &line.text)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(actual.block_skip_usage.len(), 1);
+    assert_eq!(actual.var_trace.last().unwrap().value, Some(8.0));
+    let reference = macro_reference(&altered.dialect);
+    assert_eq!(reference.comparisons[0].symbol, ">=");
+    assert_eq!(reference.functions[0].example, "SINE{1}");
+    assert_eq!(
+        altered.dialect.macro_settings.functions.as_ref().unwrap()[0].angle_unit,
+        AngleUnit::Radians
+    );
+    assert!(!run_with("O1\nWHEN(@1GE6)SET@1:=1\n", &altered)
+        .diagnostics
+        .is_empty());
+}
+
+#[test]
+fn macro_conflicts_report_the_source_line() {
+    use nclens_core::{dialect_from_json, dialect_from_str, post_from_str};
+    let err =
+        dialect_from_str("name = \"custom\"\n[macro]\nexpression = [\"(\", \"]\"]\n").unwrap_err();
+    assert_eq!(err.line, Some(3));
+    assert!(err.message.contains("macro.expression"));
+    let err = dialect_from_json(
+        r#"{
+  "macro": {
+    "comparisons": [{"symbol": "+", "operation": "eq", "precedence": 3}]
+  }
+}"#,
+    )
+    .unwrap_err();
+    assert_eq!(err.line, Some(3));
+    assert!(err.message.contains("macro.comparisons"));
+    let err = post_from_str("[mnemonic.macro]\narguments = [\"[\", \"}\"]\n").unwrap_err();
+    assert_eq!(err.line, Some(2));
+    assert!(err.message.contains("mnemonic.macro.arguments"));
+}
+
+#[test]
+fn osp_uses_configured_variable_prefixes_control_aliases_and_brackets() {
+    use nclens_core::{dialect_from_str, macro_reference};
+
+    let mut post = PostProfile::default();
+    post.dialect.name = "osp".into();
+    post.codes.integer_units = IntegerUnits::Millimeters;
+    let expected = run_with(
+        "OMAIN\nVC1=2\nIF [VC1>=2] N10\nG0 X99.\nN10 G1 X=VC1+4 F100\nM30\n",
+        &post,
+    );
+    post.dialect = dialect_from_str(
+        r#"
+name = "custom"
+base = "osp"
+[macro]
+expression = ["(", ")"]
+comment_pair = ["{", "}"]
+assignment = ":="
+variables = [
+  { prefix = "VAL", kind = "common", range = [10, 20], offset = 999999991 },
+  { prefix = "V", kind = "local" },
+]
+controls = [
+  { keyword = "WHEN", statement = "if" },
+  { keyword = "JUMP", statement = "goto" },
+]
+"#,
+    )
+    .unwrap();
+    let actual = run_with(
+        "OMAIN\nVAL10:=2\nWHEN (VAL10>=2) N10\nG0 X99.\nN10 G1 X:=VAL10+4 F100\nM30\n",
+        &post,
+    );
+    assert!(
+        expected.diagnostics.is_empty(),
+        "{:?}",
+        expected.diagnostics
+    );
+    assert!(actual.diagnostics.is_empty(), "{:?}", actual.diagnostics);
+    assert_eq!(
+        actual.path.last().unwrap().to,
+        expected.path.last().unwrap().to
+    );
+    assert_eq!(actual.var_trace[0].var, expected.var_trace[0].var);
+    assert_eq!(
+        macro_reference(&post.dialect).controls[0].example,
+        "WHEN (1) N10"
+    );
+}

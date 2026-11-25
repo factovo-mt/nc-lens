@@ -39,12 +39,12 @@ nclens-cli post check machine.post.toml
 nclens-cli settings init integration.json
 nclens-cli settings check integration.json
 nclens-cli settings show integration.json --set expand.optional_stop=true
-nclens-cli post show --post machine.post.toml --dialect fanuc --settings integration.json --set codes.rapid_feed=5000 --format json
+nclens-cli post show --post machine.post.toml --mnemonic fanuc --settings integration.json --set codes.rapid_feed=5000 --format json
 nclens-cli run work.NCD --post machine.post.toml --settings integration.json --set variables.work.G54.x=10 --set expand.block_skip=true
 ```
 
 - 優先順位は既定、ポスト、アプリ設定、`--set` の順。後ろの指定が優先されます。
-- `--post` と `--dialect` は `.toml`、`.json` に対応します。`--dialect` では同梱の `fanuc`、`osp` も選べます。
+- `--post` と `--mnemonic` は `.toml`、`.json` に対応します。`--mnemonic` では同梱の `fanuc`、`osp` も選べます。
 - `post show --format toml|json` の出力は設定ファイルとして読み込めます。`post init` は出力先の拡張子に合わせて初期設定を書き出します。
 - `--settings` は GUI と同じ形式の JSON。CLI では `version`、`blockSkip`、`blockSkipLevels`、`optionalStop` を読みます。`blockSkip: null` ならポストのオン・オフを使います。
 - `--block-skip` は /1 を有効化し、`--block-skip-levels 1,3,5` は指定番号を有効化します。番号の範囲は 1〜9 です。ポストの `[expand]` では `block_skip` がオンのときに `block_skip_levels`（既定 `[1]`）を使い、空配列なら全番号が無効です。
@@ -88,7 +88,8 @@ curl.exe --fail -H "Content-Type: text/plain; charset=cp932" --data-binary "@wor
 | `POST /v1/expand` | 展開 NC の `text/plain` |
 | `POST /v1/report` | 詳細レポート JSON |
 | `GET /v1/health` | `{"status":"ok"}` |
-| `GET /v1/dialects` | 組み込み方言の設定一覧 |
+| `GET /v1/mnemonics` | 組み込みのニーモニック・固有の定義一覧 |
+| `POST /v1/macro-reference` | 定義 JSON からマクロ記号一覧を返す |
 
 POST の本文には NC のバイト列、または UTF-8 の JSON を送ります。JSON の `nc` は文字列、`post` は TOML または JSON の設定を入れた文字列、`set` は項目名と値の対応表、`include` は項目名の配列です。JSON の `encoding` には、文字列に変換する前の文字コードを指定できます。省略時は UTF-8 として記録します。CP932 のバイト列には `text/plain; charset=cp932` を指定できます。
 
@@ -139,3 +140,27 @@ print(result["report"]["totals"])
 
 - 一括処理は標準ライブラリのスレッド、監視は標準ライブラリのポーリングを使用。グロブと SHA-256 はロック済みの `glob` と `sha2` を使用。
 - HTTP は [axum 0.8.9](https://docs.rs/crate/axum/0.8.9) に固定。MIT。HTTP/1.1、ルーティング、本文上限の機能を使い、タイムアウトには既存の Tokio を使用。
+
+
+## マクロ記号の定義と一覧
+
+ポスト設定の記述先は、TOMLでは `[mnemonic.macro]`、JSONでは `mnemonic.macro` です。単独の定義ファイルでは `[macro]` または `macro` を使います。省略した項目には組み込み定義の値を使用します。配列を指定した項目は表全体が置き換わります。同じ機能に複数の記号を割り当てるには、記号ごとに行を追加してください。
+
+次の定義ではグループに丸括弧を使い、コメントはセミコロンから行末までとします。比較演算子は `>=` のみです。記号が長い演算子を優先して読み取り、優先順位の数値が大きい演算子から計算します。同じ優先順位では左から結合します。
+
+```toml
+name = "custom"
+base = "fanuc"
+
+[macro]
+expression = ["(", ")"]
+comment_pair = []
+comparisons = [
+  { symbol = ">=", operation = "ge", precedence = 3, description = "以上" },
+]
+```
+
+一覧の取得には `nclens-cli macro-reference --mnemonic custom.toml` または `POST /v1/macro-reference` を使います。HTTPのリクエスト本文は単独の定義を表すJSONオブジェクトです。WASM関数 `macro_reference(mnemonic)` は定義をJSON文字列で受け取り、一覧をJSON文字列で返します。
+
+- [ニーモニック・固有の定義の JSON Schema](mnemonic.schema.json)
+- [マクロ記号一覧の JSON Schema](macro-reference.schema.json)

@@ -17,4 +17,5 @@ declare module "nclens-wasm" {
   export function format_post_json(post: string): string;
   export function parse_dialect_json(text: string): string;
   export function format_dialect_json(dialect: string): string;
+  export function macro_reference(mnemonic: string): string;
 }

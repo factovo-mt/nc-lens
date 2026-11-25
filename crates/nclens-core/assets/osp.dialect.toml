@@ -1,7 +1,6 @@
 # Initial OSP milling profile. See DIALECTS.md for the tested scope.
 name = "osp"
 base = "fanuc"
-macro = "osp"
 
 [g_codes]
 "4" = { function = "dwell_feed", description = "ドウェル。F の秒数だけ停止" }
@@ -57,3 +56,58 @@ macro = "osp"
 [m_codes]
 "98" = { function = "ignore", description = "OSP では無視（サブプログラムは CALL・RTS）" }
 "99" = { function = "ignore", description = "OSP では無視（サブプログラムは CALL・RTS）" }
+
+[macro]
+syntax = "osp"
+expression = ["[", "]"]
+arguments = ["[", "]"]
+assignment = "="
+block_skip = "/"
+comment_pair = ["(", ")"]
+line_comments = [";"]
+variables = [
+  { prefix = "", kind = "local", description = "名前付きローカル変数。V から始まる名前も使用可" },
+  { prefix = "VC", kind = "common", range = [1, 999999999], offset = 1000000000, description = "番号付き共通変数" },
+  { prefix = "EMPTY", kind = "empty", description = "空値" },
+  { prefix = "#", kind = "empty", range = [0, 0], description = "空値" },
+  { prefix = "#", kind = "local", range = [1, 33], description = "呼び出しごとのローカル変数" },
+  { prefix = "#", kind = "common", range = [100, 199], description = "共通変数" },
+  { prefix = "#", kind = "retained", range = [500, 999], description = "保持用の共通変数" },
+  { prefix = "#", kind = "system", range = [1000, 99999], description = "対応する機械状態、タイマー、アラームなど" },
+]
+operators = [
+  { symbol = "+", operation = "add", precedence = 4, description = "加算" },
+  { symbol = "-", operation = "sub", precedence = 4, description = "減算" },
+  { symbol = "*", operation = "mul", precedence = 5, description = "乗算" },
+  { symbol = "/", operation = "div", precedence = 5, description = "除算" },
+  { symbol = "MOD", operation = "mod", precedence = 5, description = "剰余" },
+  { symbol = "AND", operation = "and", precedence = 2, description = "ビット単位の論理積" },
+  { symbol = "OR", operation = "or", precedence = 1, description = "ビット単位の論理和" },
+  { symbol = "XOR", operation = "xor", precedence = 1, description = "ビット単位の排他的論理和" },
+]
+comparisons = [
+  { symbol = "EQ", operation = "eq", precedence = 3, description = "等しい" },
+  { symbol = "NE", operation = "ne", precedence = 3, description = "等しくない" },
+  { symbol = "GT", operation = "gt", precedence = 3, description = "より大きい" },
+  { symbol = "LT", operation = "lt", precedence = 3, description = "より小さい" },
+  { symbol = "GE", operation = "ge", precedence = 3, description = "以上" },
+  { symbol = "LE", operation = "le", precedence = 3, description = "以下" },
+  { symbol = "=", operation = "eq", precedence = 3, description = "等しい" },
+  { symbol = "<>", operation = "ne", precedence = 3, description = "等しくない" },
+  { symbol = ">", operation = "gt", precedence = 3, description = "より大きい" },
+  { symbol = "<", operation = "lt", precedence = 3, description = "より小さい" },
+  { symbol = ">=", operation = "ge", precedence = 3, description = "以上" },
+  { symbol = "<=", operation = "le", precedence = 3, description = "以下" },
+  { symbol = "!=", operation = "ne", precedence = 3, description = "等しくない" },
+  { symbol = "==", operation = "eq", precedence = 3, description = "等しい" },
+]
+controls = [
+  { keyword = "IF", statement = "if", description = "条件分岐" },
+  { keyword = "GOTO", statement = "goto", description = "指定したシーケンスに移動" },
+  { keyword = "CALL", statement = "call", description = "名前付き引数でサブプログラムを呼ぶ" },
+  { keyword = "RTS", statement = "rts", description = "呼び出し元に戻る" },
+  { keyword = "MODIN", statement = "modin", description = "モーダルな呼び出しを開始" },
+  { keyword = "MODOUT", statement = "modout", description = "モーダルな呼び出しを解除" },
+]
+functions = [
+]

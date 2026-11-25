@@ -39,24 +39,47 @@ export interface MotionTotals {
 }
 export interface ReportBreakdown { totals: MotionTotals; bounds: CoordinateBounds; used_lines: number[] }
 export interface Report {
-  filename: string; generated_at_unix_seconds: number; dialect: string; post_name: string;
+  filename: string; generated_at_unix_seconds: number; mnemonic: string; post_name: string;
   totals: MotionTotals; feed_min: number | null; feed_max: number | null; bounds: CoordinateBounds;
   tools: Record<string, ReportBreakdown>; programs: Record<string, ReportBreakdown>;
   errors: number; warnings: number;
 }
 
-// 方言（nclens-core の DialectSettings。.dialect.toml・JSON の中身と同じ形）
+// ニーモニック・固有（nclens-core の DialectSettings。.dialect.toml・JSON の中身と同じ形）
 export type MacroSyntax = "fanuc" | "osp";
+/** マクロ記号の表の行（nclens-core の macro_settings.rs と同じ形） */
+export interface VariableDefinition { prefix: string; kind: "empty" | "local" | "common" | "retained" | "system"; range?: [number, number]; offset?: number; description: string }
+export interface OperatorDefinition { symbol: string; operation: string; precedence: number; description: string }
+export interface ControlDefinition { keyword: string; statement: string; description: string }
+export interface FunctionDefinition { name: string; function: string; arity: [number, number]; angle_unit?: "degrees" | "radians"; description: string }
+/** マクロ記号（[macro]。省略の項目：組み込みの FANUC・OSP の値） */
+export interface MacroSettings {
+  syntax?: MacroSyntax;
+  expression?: [string, string];
+  arguments?: [string, string];
+  assignment?: string;
+  block_skip?: string;
+  comment_pair?: string[];
+  line_comments?: string[];
+  variables?: VariableDefinition[];
+  operators?: OperatorDefinition[];
+  comparisons?: OperatorDefinition[];
+  controls?: ControlDefinition[];
+  functions?: FunctionDefinition[];
+}
+/** ヘルプの一覧表（nclens-core の MacroReference） */
+export interface MacroReferenceRow { name: string; symbol: string; description: string; example: string }
+export interface MacroReference { variables: MacroReferenceRow[]; operators: MacroReferenceRow[]; comparisons: MacroReferenceRow[]; controls: MacroReferenceRow[]; functions: MacroReferenceRow[] }
 export const ADDRESS_ROLES = ["X", "Y", "Z", "A", "B", "C", "U", "V", "W", "I", "J", "K", "R", "F", "S", "T", "H", "D", "O", "N", "P", "L", "Q", "G", "M", "DwellSeconds", "Repeat"] as const;
 export type AddressRole = (typeof ADDRESS_ROLES)[number];
-/** description：ツールチップの解説（空・省略：基底の方言の解説） */
+/** description：ツールチップの解説（空・省略：基底のニーモニック・固有の解説） */
 export interface GCodeDefinition { function: string; group: number | null; description?: string }
 export interface MCodeDefinition { function: string; program: number | null; description?: string }
 export type CustomCode = { call: number } | { replace: string };
 export interface DialectSettings {
   name: string;
   base: string | null;
-  macro?: MacroSyntax;
+  macro?: MacroSettings;
   addresses: Record<string, AddressRole>;
   g_codes: Record<string, GCodeDefinition>;
   m_codes: Record<string, MCodeDefinition>;
@@ -70,7 +93,7 @@ export type DuplicateWord = "last" | "first" | "error";
 export type Xyz = [number, number, number];
 export interface ToolOffset { h_geometry: number; h_wear: number; d_geometry: number; d_wear: number }
 export interface PostProfile {
-  dialect: DialectSettings;
+  mnemonic: DialectSettings;
   version: number;
   name: string;
   comment: string;

@@ -102,6 +102,7 @@ mod dialect;
 mod duplicate;
 mod engine;
 mod machine;
+mod macro_settings;
 mod post;
 mod preview;
 mod report;
@@ -110,6 +111,7 @@ mod text_settings;
 pub mod tool;
 
 pub use dialect::*;
+pub use macro_settings::*;
 pub use post::*;
 pub use preview::*;
 pub use report::*;

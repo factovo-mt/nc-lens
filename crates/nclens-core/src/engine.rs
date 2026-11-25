@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use crate::dialect::{Action, Dialect, DWELL_FEED, DYNAMIC_LENGTH};
 use crate::duplicate::{retained_words, EvaluatedWord, SourceWord};
 use crate::machine::{word, Machine};
-use crate::syntax::{self, Body, Expr, Op, Program, Result, Word, OSP_COMMON_BASE, OSP_LOCAL_BASE};
+use crate::syntax::{self, Body, Expr, Op, Program, Result, Word};
 use crate::{
-    CallEvent, CallKind, Diagnostic, DistanceMode, ExpandedLine, IntegerUnits, PostProfile,
-    RunResult, SegKind, StopKind, StopPoint, VarChange,
+    AngleUnit, CallEvent, CallKind, Diagnostic, DistanceMode, ExpandedLine, Function, IntegerUnits,
+    PostProfile, RunResult, SegKind, StopKind, StopPoint, VarChange, VariableKind,
 };
 
 #[derive(Clone)]
@@ -81,7 +81,7 @@ pub fn run(
         src,
         dialect.program_address,
         dialect.sequence_address,
-        &dialect.macro_syntax,
+        &dialect.macro_grammar,
         &mut result,
     );
     let block_skip = levels
@@ -89,7 +89,7 @@ pub fn run(
         .filter(|n| (1..=9).contains(*n))
         .fold(0, |mask, &n| mask | (1u16 << (n - 1)));
     // Keep the parsed program immutable while mutating the execution state.
-    let machine = Machine::new(post, src);
+    let machine = Machine::new(post, src, &dialect.macro_grammar);
     let source_modal = machine
         .modal_codes()
         .filter_map(|canonical| {
@@ -292,12 +292,21 @@ impl Engine<'_> {
     }
 
     fn read(&self, n: u32) -> Result<Option<f64>> {
+        match self.dialect.macro_grammar.variable_kind(n) {
+            Some(VariableKind::Empty) => return Ok(None),
+            Some(VariableKind::Local) if (1..=33).contains(&n) => {
+                return Ok(self.locals[self.local()].values[n as usize - 1]);
+            }
+            Some(VariableKind::Local) => {
+                return Ok(self.locals[self.local()].named.get(&n).copied().flatten());
+            }
+            Some(VariableKind::Common | VariableKind::Retained) => {
+                return Ok(self.common.get(&n).copied().flatten());
+            }
+            Some(VariableKind::System) => {}
+            None => return Err(format!("Unsupported variable #{n}")),
+        }
         match n {
-            0 => Ok(None),
-            1..=33 => Ok(self.locals[self.local()].values[n as usize - 1]),
-            100..=199 | 500..=999 => Ok(self.common.get(&n).copied().flatten()),
-            OSP_LOCAL_BASE.. => Ok(self.locals[self.local()].named.get(&n).copied().flatten()),
-            OSP_COMMON_BASE.. => Ok(self.common.get(&n).copied().flatten()),
             3003 | 3004 => Ok(Some(
                 self.common.get(&n).copied().flatten().unwrap_or_default(),
             )),
@@ -327,32 +336,41 @@ impl Engine<'_> {
     }
 
     fn write(&mut self, n: u32, value: Option<f64>) -> Result<()> {
-        match n {
-            1..=33 => {
-                let slot = self.local();
+        let slot = self.local();
+        match self.dialect.macro_grammar.variable_kind(n) {
+            Some(VariableKind::Local) if (1..=33).contains(&n) => {
                 self.locals[slot].values[n as usize - 1] = value;
                 self.locals[slot].implicit_decimal[n as usize - 1] = false;
             }
-            OSP_LOCAL_BASE.. => {
-                let slot = self.local();
+            Some(VariableKind::Local) => {
                 self.locals[slot].named.insert(n, value);
             }
-            OSP_COMMON_BASE.. | 100..=199 | 500..=999 | 3003 | 3004 => {
+            Some(VariableKind::Common | VariableKind::Retained) => {
                 self.common.insert(n, value);
             }
-            3000 | 3006 => {
-                self.stopped = true;
-                self.record(n, value);
-                let v = value.unwrap_or_default();
-                return Err(if n == 3000 {
-                    format!("Macro alarm {v}")
-                } else {
-                    format!("Macro stop {v}")
-                });
-            }
-            3001 => self.timers[0] = self.result.stats.time_sec * 1000. - value.unwrap_or_default(),
-            3002 => self.timers[1] = self.result.stats.time_sec / 3600. - value.unwrap_or_default(),
-            _ if self.machine.write(n, value) => {}
+            Some(VariableKind::System) => match n {
+                3003 | 3004 => {
+                    self.common.insert(n, value);
+                }
+                3000 | 3006 => {
+                    self.stopped = true;
+                    self.record(n, value);
+                    let v = value.unwrap_or_default();
+                    return Err(if n == 3000 {
+                        format!("Macro alarm {v}")
+                    } else {
+                        format!("Macro stop {v}")
+                    });
+                }
+                3001 => {
+                    self.timers[0] = self.result.stats.time_sec * 1000. - value.unwrap_or_default()
+                }
+                3002 => {
+                    self.timers[1] = self.result.stats.time_sec / 3600. - value.unwrap_or_default()
+                }
+                _ if self.machine.write(n, value) => {}
+                _ => return Err(format!("Cannot write variable #{n}")),
+            },
             _ => return Err(format!("Cannot write variable #{n}")),
         }
         self.record(n, value);
@@ -364,6 +382,15 @@ impl Engine<'_> {
         let v = match expr {
             Expr::Number(v) => *v,
             Expr::Var(index) => return self.read(integer(n(index)?)?),
+            Expr::VariableIndex(prefix, index) => {
+                let id = integer(n(index)?)?;
+                let variable = self
+                    .dialect
+                    .macro_grammar
+                    .resolve_variable(prefix, id)
+                    .ok_or_else(|| format!("Unsupported variable {prefix}{id}"))?;
+                f64::from(variable)
+            }
             Expr::Negative(a) => -n(a)?,
             Expr::Binary(op, a, b) => {
                 let a = self.eval(a)?;
@@ -389,31 +416,45 @@ impl Engine<'_> {
                     Op::Xor => ((x as i64) ^ (y as i64)) as f64,
                 }
             }
-            Expr::Function(name, a, b) => {
+            Expr::Function(function, unit, a, b) => {
                 let x = n(a)?;
-                match name.as_str() {
-                    "SIN" => x.to_radians().sin(),
-                    "COS" => x.to_radians().cos(),
-                    "TAN" => x.to_radians().tan(),
-                    "ASIN" => x.asin().to_degrees(),
-                    "ACOS" => x.acos().to_degrees(),
-                    "ATAN" => {
+                let input_angle = |x: f64| {
+                    if *unit == AngleUnit::Degrees {
+                        x.to_radians()
+                    } else {
+                        x
+                    }
+                };
+                let output_angle = |x: f64| {
+                    if *unit == AngleUnit::Degrees {
+                        x.to_degrees()
+                    } else {
+                        x
+                    }
+                };
+                match function {
+                    Function::Sin => input_angle(x).sin(),
+                    Function::Cos => input_angle(x).cos(),
+                    Function::Tan => input_angle(x).tan(),
+                    Function::Asin => output_angle(x.asin()),
+                    Function::Acos => output_angle(x.acos()),
+                    Function::Atan => {
                         if let Some(b) = b {
-                            x.atan2(n(b)?).to_degrees()
+                            output_angle(x.atan2(n(b)?))
                         } else {
-                            x.atan().to_degrees()
+                            output_angle(x.atan())
                         }
                     }
-                    "SQRT" => x.sqrt(),
-                    "ABS" => x.abs(),
-                    "ROUND" => x.round(),
-                    "FIX" => x.trunc(),
-                    "FUP" => x.abs().ceil().copysign(x),
-                    "LN" => x.ln(),
-                    "EXP" => x.exp(),
-                    "BIN" => digits(x, 16, 10)?,
-                    "BCD" => digits(x, 10, 16)?,
-                    "ADP" => {
+                    Function::Sqrt => x.sqrt(),
+                    Function::Abs => x.abs(),
+                    Function::Round => x.round(),
+                    Function::Fix => x.trunc(),
+                    Function::Fup => x.abs().ceil().copysign(x),
+                    Function::Ln => x.ln(),
+                    Function::Exp => x.exp(),
+                    Function::Bin => digits(x, 16, 10)?,
+                    Function::Bcd => digits(x, 10, 16)?,
+                    Function::Adp => {
                         let implicit = if let Expr::Var(index) = a.as_ref() {
                             let id = integer(n(index)?)?;
                             (1..=26).contains(&id)
@@ -427,7 +468,7 @@ impl Engine<'_> {
                             x
                         }
                     }
-                    _ => unreachable!(),
+                    Function::Pow => x.powf(n(b.as_ref().ok_or("Missing exponent")?)?),
                 }
             }
         };
@@ -904,7 +945,7 @@ impl Engine<'_> {
                     return Ok(Some((target, locals)));
                 }
                 Action::Custom(crate::CustomCode::Replace(text)) => {
-                    let words = syntax::parse_replacement(&text)?;
+                    let words = syntax::parse_replacement(&text, &self.dialect.macro_grammar)?;
                     if let Some(call) = self.normalize_words(&words, output, depth + 1)? {
                         return Ok(Some(call));
                     }

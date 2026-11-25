@@ -12,7 +12,7 @@ export interface ViewState { layout: "single" | "quad"; active: "xy" | "yz" | "x
 export const MODAL_ITEMS = ["g", "f", "s", "t", "h", "d", "work", "plane", "abs", "pos", "range"] as const;
 export type ModalItem = (typeof MODAL_ITEMS)[number];
 
-/** ポスト・コード定義のセット：ポスト（方言を含む）と、結び付いたポストのファイル（TOML・JSON）（無ければ null） */
+/** ポスト・コード定義のセット：ポスト（ニーモニック・固有を含む）と、結び付いたポストのファイル（TOML・JSON）（無ければ null） */
 export interface PostSet { profile: PostProfile; path: string | null }
 
 /** 浮動ウィンドウの位置と大きさ（CSS px） */
@@ -39,7 +39,7 @@ export interface AppSettings {
   /** ポスト・コード定義のセットの一覧と、実行に使うセットの名前（既定） */
   posts: PostSet[];
   currentPost: string;
-  /** 旧版（W12 まで）の方言の一覧・既定の方言・最後のポスト。起動時にセットの一覧へ移して消す */
+  /** 旧版（W12 まで）のニーモニック・固有の一覧・既定のニーモニック・固有・最後のポスト。起動時にセットの一覧へ移して消す */
   dialects?: DialectSettings[];
   defaultDialect?: string;
   lastPost?: string | null;

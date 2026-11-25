@@ -1,13 +1,12 @@
-# 方言の設定
+# ニーモニック・固有の定義
 
-`PostProfile.dialect`に方言を保存する。CLIでは `--dialect fanuc`、`--dialect osp`、または `--dialect sample.dialect.toml`で選べる。`.post.toml`の`[dialect]`を省略した場合は FANUCを使う。
+ポスト設定では `[mnemonic]` に記述する。CLI では `--mnemonic fanuc`、`--mnemonic osp`、または `--mnemonic sample.toml` で選べる。指定を省くと FANUC を使用する。
 
 次は `U` を X 軸、`G101.5` を直線補間として扱う例。
 
 ```toml
 name = "sample"
 base = "fanuc"
-macro = "fanuc"
 
 [addresses]
 U = "X"
@@ -27,7 +26,13 @@ Z999 = { replace = "G00 U10." }
 
 `g_codes` と `m_codes` のキーは数字のみ。機能名と既定の群番号は [FANUC の定義](fanuc.dialect.toml) を参照。`group` の省略または 0 は、モーダル情報に記録しないコードを表す。`ignore` は実行と展開の両方から除く。`unsupported` を指定した G コードは診断を出してブロックを飛ばす。動的工具長補正を設定する場合は `length_dynamic` を使う。Z の値で工具長を設定し、G43、G44、G49 で解除する。
 
-`custom` のキーはアドレスと数値の組み合わせ。置き換えは同じブロック内で行い、置き換えたワードにも方言の定義を適用する。`DwellSeconds` はドウェルの秒、`Repeat` は繰り返し回数の役割を割り当てる。ポスト設定で無視するよう指定したコードは、方言の定義より優先する。
+`custom` のキーはアドレスと数値の組み合わせ。置き換えは同じブロック内で行い、置き換えたワードにも同じ定義を適用する。`DwellSeconds` はドウェルの秒、`Repeat` は繰り返し回数の役割を割り当てる。ポスト設定で無視するよう指定したコードは、ニーモニック・固有の定義より優先する。
+
+## マクロ記号
+
+`[macro]` で括弧、代入、コメント、ブロックスキップの記号と、変数・演算子・比較・制御文・関数の各表を指定する。ポスト設定に組み込む場合は `[mnemonic.macro]` に記述する。省略した項目には、組み込み FANUC または OSP の値を使う。
+
+`nclens-cli macro-reference --mnemonic sample.toml` で記号と例の一覧を表示する。 [API の説明](../../../docs/api/README.md#マクロ記号の定義と一覧)
 
 ## OSP の対応範囲
 
@@ -35,7 +40,7 @@ OSP-P200M/P20M の解説書 5228-E の第10章と第11章を参照した。対�
 
 `G15 H1`〜`H6` のワーク座標、`G04 F` の秒指定、`G56 H` の Z 軸工具長補正を暫定実装した。実機による照合は未実施。整数入力の単位と工具長の設定はポストに従う。`MODIN` は移動ブロックの後に呼び出し、名前付き引数は指令時に評価する。機種やオプションによる違いは未確認。
 
-範囲外はOSPの全関数、ユーザタスク2の入出力や外部プログラムの登録など、OSP固有の固定サイクルと旋盤の複合サイクル。OSPの検査NC4本と期待値は `tests/osp/`と`tests/dialect.rs`に収録した。
+ユーザタスク2の入出力や外部プログラムの登録、OSP 固有の固定サイクル、旋盤の複合サイクルは対象外。OSP の検査 NC 4 本と期待値は `tests/osp/` と `tests/dialect.rs` に収録した。
 
 ## モーダル情報とレポート
 

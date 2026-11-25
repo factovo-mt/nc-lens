@@ -14,12 +14,12 @@ import { initReport, openReport, refreshReport } from "./report";
 import { builtinDialects } from "./dialect";
 import { explainAt, helpDom, setHelpSource } from "./codehelp";
 import { CodePeek } from "./peek";
-import { openHelp } from "./help";
+import { openHelp, refreshHelp } from "./help";
 import { LINKS } from "./links";
 import { bindRunSwitches } from "./breaks";
 import { applyLayout, bindColumns, tableHtml, type Col } from "./coltable";
 import { initMobile, revealNc, setNarrowLayout } from "./mobile";
-import type { DialectSettings, ExpandedLine, PostProfile, RunResult } from "./types";
+import type { DialectSettings, ExpandedLine, MacroSyntax, PostProfile, RunResult } from "./types";
 import sample from "../samples/bolt-circle-pocket.NCD?raw";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -61,7 +61,7 @@ let loading = false;
 /** 実行に使うセット */
 const currentSet = (): PostSet | undefined => settings.posts.find((s) => s.profile.name === settings.currentPost) ?? settings.posts[0];
 
-/** 実行に渡すポスト（方言を含む） */
+/** 実行に渡すポスト（ニーモニック・固有を含む） */
 const runPost = (): PostProfile | null => currentSet()?.profile ?? null;
 /** スキップの番号：アプリ設定の選択を優先、未選択はセットの既定 */
 const postLevels = () => runPost()?.expand.block_skip_levels ?? [1];
@@ -72,20 +72,29 @@ const skipLevels = () => (settings.blockSkip ?? runPost()?.expand.block_skip ?? 
 function showPost() {
   const s = currentSet();
   $("#st-post").textContent = `ポスト ${s ? `${s.profile.name}${s.path ? `（${postFileName(s.path)}）` : ""}` : "既定"}`;
+  refreshHelp();
 }
 
-/** セットの一覧を用意する。初回は旧版の方言の一覧（無ければ組み込みの FANUC・OSP）と最後のポストから作る。 */
+/** セットの一覧を用意する。初回は旧版のニーモニック・固有の一覧（無ければ組み込みの FANUC・OSP）と最後のポストから作る。 */
 async function loadSets() {
   if (settings.posts.length) {
     // 旧版の設定のセットに無い項目（重複指定ほか）は既定の値で補う
     const base = await invoke<PostProfile>("post_default").catch(() => null);
     if (base) for (const s of settings.posts) s.profile.codes = { ...base.codes, ...s.profile.codes };
+    // 0.2.4 までの設定の形（dialect のキー、マクロ構文の文字列）を今の形へ
+    for (const s of settings.posts) {
+      const p = s.profile as PostProfile & { dialect?: DialectSettings };
+      if (!p.mnemonic && p.dialect) p.mnemonic = p.dialect;
+      delete p.dialect;
+      const m = p.mnemonic.macro as unknown;
+      if (typeof m === "string") p.mnemonic.macro = { syntax: m as MacroSyntax };
+    }
     return;
   }
   try {
     const base = await invoke<PostProfile>("post_default");
     const dialects = settings.dialects?.length ? settings.dialects : await builtinDialects();
-    settings.posts = dialects.map((d) => ({ profile: { ...structuredClone(base), name: d.name, dialect: structuredClone(d) }, path: null }));
+    settings.posts = dialects.map((d) => ({ profile: { ...structuredClone(base), name: d.name, mnemonic: structuredClone(d) }, path: null }));
     settings.currentPost = settings.defaultDialect && dialects.some((d) => d.name === settings.defaultDialect) ? settings.defaultDialect : dialects[0]?.name ?? "";
     if (settings.lastPost) {
       const s = await loadPostFile(settings.lastPost);
@@ -317,7 +326,7 @@ async function runNc(keepView = false) {
     editor.setWarnings(dupWarnings(r));
     showResult(r);
     refreshAppSettings();
-    const dialect = profile?.dialect;
+    const dialect = profile?.mnemonic;
     const builtins = await builtinDialects().catch(() => []);
     if (version !== runVersion) return;
     const base = builtins.find((entry) => entry.name === (dialect?.base ?? dialect?.name ?? "fanuc"));
@@ -376,10 +385,10 @@ function table(id: string, cols: Col[], rows: string[][], lines: number[]) {
 }
 const empty = (msg: string) => `<div class="empty">${msg}</div>`;
 
-// ---- コードの説明（ツールチップ）：使用中のセットの方言の解説。展開結果の表は語の上に 0.35 秒置くと出す ----
+// ---- コードの説明（ツールチップ）：使用中のセットのニーモニック・固有の解説。展開結果の表は語の上に 0.35 秒置くと出す ----
 let helpBuiltins: DialectSettings[] = [];
 void builtinDialects().then((b) => (helpBuiltins = b)).catch(() => {});
-setHelpSource(() => ({ dialect: runPost()?.dialect ?? null, builtins: helpBuiltins }));
+setHelpSource(() => ({ dialect: runPost()?.mnemonic ?? null, builtins: helpBuiltins }));
 const codeTip = Object.assign(document.createElement("div"), { id: "code-tip", hidden: true });
 document.body.append(codeTip);
 let tipTimer = 0, tipSpan: Element | null = null;
@@ -580,6 +589,7 @@ const commands: Record<string, () => void> = {
   report: () => void openReport(),
   help: () => openHelp("features"),
   helpKeys: () => openHelp("keys"),
+  helpMacro: () => openHelp("macro"),
   helpLinks: () => openHelp("links"),
   openWeb: () => openExternal(LINKS.web),
   openDownload: () => openExternal(LINKS.download),
@@ -851,7 +861,7 @@ if (!isDesktop) {
   });
 }
 
-// ---- 表示の状態を初期化：確認してから既定へ（方言・最近使ったファイル・ポストは残す） ----
+// ---- 表示の状態を初期化：確認してから既定へ（ニーモニック・固有・最近使ったファイル・ポストは残す） ----
 async function resetAll() {
   const ok = "初期化";
   const r = await message(

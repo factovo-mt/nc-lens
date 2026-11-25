@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PostProfile {
-    #[serde(default)]
+    #[serde(rename = "mnemonic")]
     pub dialect: crate::DialectSettings,
     pub version: u32,
     pub name: String,
@@ -361,7 +361,7 @@ impl PostProfile {
             .into_iter()
             .next()
         {
-            field.insert(0, "dialect");
+            field.insert(0, "mnemonic");
             return Err(field);
         }
         if self

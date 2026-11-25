@@ -55,7 +55,7 @@ function render() {
         <span><i>その他（休止・工具交換など）</i><b>${hms(t.other_time_sec)}</b></span>
         <span><i>F（切削送り）</i><b>${feed}</b></span>
         <span><i>エラー／警告</i><b>${r.errors} ／ ${r.warnings}</b></span>
-        <span><i>ポスト／方言</i><b>${esc(r.post_name || "—")} ／ ${esc(r.dialect || "—")}</b></span>
+        <span><i>ポスト／ニーモニック・固有</i><b>${esc(r.post_name || "—")} ／ ${esc(r.mnemonic || "—")}</b></span>
         <span><i>作成</i><b>${new Date(r.generated_at_unix_seconds * 1000).toLocaleString("ja-JP")}</b></span>
       </div>
     </section>

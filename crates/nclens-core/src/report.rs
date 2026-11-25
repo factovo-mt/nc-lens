@@ -84,6 +84,7 @@ pub struct Report {
     pub filename: String,
     /// Generation time in seconds since 1970-01-01 UTC.
     pub generated_at_unix_seconds: u64,
+    #[serde(rename = "mnemonic")]
     pub dialect: String,
     pub post_name: String,
     pub totals: MotionTotals,

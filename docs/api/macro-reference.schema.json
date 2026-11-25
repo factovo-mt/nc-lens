@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NC Lens macro reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "variables",
+    "operators",
+    "comparisons",
+    "controls",
+    "functions"
+  ],
+  "properties": {
+    "variables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "operators": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "symbol",
+        "description",
+        "example"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

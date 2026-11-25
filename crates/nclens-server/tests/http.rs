@@ -88,9 +88,28 @@ fn http_endpoints_and_limits() {
         "ok"
     );
     assert!(!headers.contains("access-control-allow-origin"));
-    let (code, _, body) = server.request("GET", "/v1/dialects", "", b"");
+    let (code, _, body) = server.request("GET", "/v1/mnemonics", "", b"");
     assert_eq!(code, 200);
     assert!(body.contains("fanuc") && body.contains("osp"));
+
+    let (code, _, body) = server.request(
+        "POST",
+        "/v1/macro-reference",
+        "Content-Type: application/json\r\n",
+        br#"{"macro":{"comparisons":[{"symbol":">=","operation":"ge","precedence":3}]}}"#,
+    );
+    assert_eq!(code, 200, "{body}");
+    let reference: Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(reference["comparisons"].as_array().unwrap().len(), 1);
+    assert_eq!(reference["comparisons"][0]["symbol"], ">=");
+    let (code, _, body) = server.request(
+        "POST",
+        "/v1/macro-reference",
+        "Content-Type: application/json\r\n",
+        b"{\n  \"macro\": {\n    \"expression\": [\"(\", \"]\"]\n  }\n}",
+    );
+    assert_eq!(code, 400, "{body}");
+    assert!(body.contains("line 3"), "{body}");
 
     let nc = "O1\nG0 X5.\nM30\n";
     let data = json!({

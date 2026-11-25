@@ -1,16 +1,18 @@
 // NC のコードの説明（エディタと展開結果のツールチップ）。
-// G・M・アドレスの説明は使用中のセットの方言の「解説」の列。空なら基底の組み込みの方言、FANUC の順に探す。
+// G・M・アドレスの説明は使用中のセットのニーモニック・固有の「解説」の列。空なら基底の組み込み、FANUC の順に探す。
 // #変数とマクロ文の説明はここの表。そのブロックの実行後のモーダルを 1 行添える。
 import { ncTokenAt } from "./nc-lang";
 import { FUNC_LABEL } from "./dialect";
 import type { DialectSettings, ModalSnapshot } from "./types";
 
 type Source = () => { dialect: DialectSettings | null; builtins: DialectSettings[] };
-/** 使用中のセットの方言と組み込みの方言（main.ts が渡す） */
+/** 使用中のセットのニーモニック・固有と組み込みのもの（main.ts が渡す） */
 let source: Source = () => ({ dialect: null, builtins: [] });
 export function setHelpSource(fn: Source) {
   source = fn;
 }
+/** 使用中のセットのニーモニック・固有（ヘルプのマクロ一覧） */
+export const currentMnemonic = () => source().dialect;
 
 const MACRO: Record<string, string> = {
   IF: "条件分岐。IF [条件] GOTO n：分岐、IF [条件] THEN 代入：条件付きの代入",
@@ -66,7 +68,7 @@ function variable(n: number): string {
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : String(Number(v.toFixed(4))));
 
-/** 使用中の方言・基底・FANUC の順に、ok を満たす値を探す */
+/** 使用中のニーモニック・固有・基底・FANUC の順に、ok を満たす値を探す */
 function lookup<T>(pick: (d: DialectSettings) => T | undefined, ok: (v: T) => boolean = () => true): T | undefined {
   const { dialect, builtins } = source();
   const base = builtins.find((b) => b.name === (dialect?.base ?? dialect?.name ?? "fanuc"));
@@ -95,7 +97,7 @@ export function explainWord(type: string, text: string, modal: ModalSnapshot | n
     const k = String(Number(num));
     const table = letter === "G" ? "g_codes" : "m_codes";
     const def = lookup((d) => d[table][k]);
-    if (!def) return { head: word, body: "方言の表に無いコード" };
+    if (!def) return { head: word, body: "ニーモニック・固有の表に無いコード" };
     const body = lookup((d) => d[table][k]?.description, (v) => !!v) ?? FUNC_LABEL[def.function] ?? def.function;
     const group = "group" in def ? def.group : null;
     let note: string | undefined;
@@ -105,7 +107,7 @@ export function explainWord(type: string, text: string, modal: ModalSnapshot | n
     }
     return { head: word, body, note };
   }
-  // アドレス：方言の読み替え（U → X など）を通して説明を探す
+  // アドレス：ニーモニック・固有の読み替え（U → X など）を通して説明を探す
   const role = lookup((d) => d.addresses[letter]) ?? letter;
   const as = role.length === 1 ? role : letter;
   const body = lookup((d) => d.address_descriptions?.[letter], (v) => !!v) ?? lookup((d) => d.address_descriptions?.[as], (v) => !!v);

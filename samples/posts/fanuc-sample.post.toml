@@ -2,7 +2,7 @@ version = 1
 name = "FANUC Sample"
 comment = "サンプル用の工具とワーク原点"
 
-[dialect]
+[mnemonic]
 name = "fanuc"
 
 [codes]

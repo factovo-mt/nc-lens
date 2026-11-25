@@ -2,7 +2,7 @@
 // 入力の検査はコアの PostProfile::validate と同じ規則。保存の前にコア側でもう一度検査する。
 import type { PostProfile, Xyz } from "./types";
 
-/** ポスト・方言のファイル：TOML と JSON（拡張子で判別） */
+/** ポスト・ニーモニック・固有のファイル：TOML と JSON（拡張子で判別） */
 export const SETTINGS_FILTERS = [{ name: "TOML（*.toml）", extensions: ["toml"] }, { name: "JSON（*.json）", extensions: ["json"] }];
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -156,7 +156,7 @@ export function renderPost(p: PostProfile) {
   return { codes, vars, expand };
 }
 
-/** 画面の中身 → PostProfile（方言は base のまま）。誤りがあれば入力に印を付けて文言の一覧を返す。 */
+/** 画面の中身 → PostProfile（ニーモニック・固有は base のまま）。誤りがあれば入力に印を付けて文言の一覧を返す。 */
 export function collectPost(root: HTMLElement, base: PostProfile): { profile: PostProfile; errors: string[] } {
   const p: PostProfile = structuredClone(base);
   const errors: string[] = [];

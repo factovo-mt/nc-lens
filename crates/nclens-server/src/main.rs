@@ -20,7 +20,10 @@ use nclens_cli::{
     decode, execute, expanded_nc, run_output, wants_trace, AppSwitches, Config, Encoding, Error,
     Include, DEFAULT_INCLUDE,
 };
-use nclens_core::{builtin_dialects, make_report, post_from_json, post_from_str};
+use nclens_core::{
+    builtin_dialects, dialect_from_json, macro_reference, make_report, post_from_json,
+    post_from_str,
+};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tokio::sync::Semaphore;
@@ -102,7 +105,8 @@ fn router(options: &Options) -> Router {
             "/v1/health",
             get(|| async { Json(json!({"status": "ok"})) }),
         )
-        .route("/v1/dialects", get(|| async { Json(builtin_dialects()) }))
+        .route("/v1/mnemonics", get(|| async { Json(builtin_dialects()) }))
+        .route("/v1/macro-reference", post(reference))
         .route("/v1/run", post(run))
         .route("/v1/expand", post(expand))
         .route("/v1/report", post(report))
@@ -124,6 +128,16 @@ fn router(options: &Options) -> Router {
             },
         ))
         .with_state(jobs)
+}
+
+async fn reference(body: Bytes) -> Response {
+    let settings = std::str::from_utf8(&body)
+        .map_err(|error| error.to_string())
+        .and_then(|json| dialect_from_json(json).map_err(|error| error.to_string()));
+    match settings {
+        Ok(settings) => Json(macro_reference(&settings)).into_response(),
+        Err(message) => failure(StatusCode::BAD_REQUEST, &message),
+    }
 }
 
 #[derive(Clone, Copy)]
